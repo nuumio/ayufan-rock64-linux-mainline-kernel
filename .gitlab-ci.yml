@@ -1,0 +1,49 @@
+image: ayufan/rock64-dockerfiles:x86_64
+
+variables:
+  GITHUB_USER: ayufan-rock64
+  GITHUB_REPO: linux-mainline-kernel
+
+  USE_CCACHE: "true"
+  CCACHE_DIR: "/data/shared/ccache"
+
+stages: [build]
+
+before_script:
+  - ccache -M 0 -F 0
+
+build:
+  stage: build
+  only: [branches]
+  script:
+    - rm -f ../*.deb
+    - export RELEASE=$(date +%Y%m%d%H%M)
+    - ./dev-make kernel-package
+    - |
+      set -x
+
+      export RELEASE_NAME="$(./dev-make version)"
+      export RELEASE_TITLE="$(./dev-make version)"
+      export DESCRIPTION="$CI_PROJECT_URL/pipelines/$CI_PIPELINE_ID"
+
+      github-release release \
+        --tag "${RELEASE_NAME}" \
+        --name "${RELEASE_TITLE}" \
+        --description "${DESCRIPTION}" \
+        --target "${CI_COMMIT_SHA}" \
+        --draft
+
+      pushd ../
+      for i in *.deb; do
+        github-release upload \
+          --tag "${RELEASE_NAME}" \
+          --name "${i}" \
+          --file "${i}"
+      done
+      popd
+
+      github-release edit \
+        --tag "${RELEASE_NAME}" \
+        --name "${RELEASE_TITLE}" \
+        --description "${DESCRIPTION}" \
+        --pre-release
