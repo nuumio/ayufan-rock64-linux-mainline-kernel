@@ -1,4 +1,4 @@
-RELEASE ?= 1~dev
+RELEASE ?= 0.1~dev
 KERNEL_EXTRAVERSION ?= -rockchip-ayufan-$(RELEASE)
 KERNEL_DEFCONFIG ?= rockchip_linux_defconfig
 
