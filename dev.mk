@@ -1,27 +1,29 @@
-RELEASE ?= 0.1~dev
-KERNEL_EXTRAVERSION ?= -rockchip-ayufan-$(RELEASE)
+RELEASE ?= 1
 KERNEL_DEFCONFIG ?= rockchip_linux_defconfig
 
 BOARD ?= rk3328-rock64
 
-export KDEB_PKGVERSION=$(RELEASE)~ayufan
+KERNEL_RELEASE ?= $(shell $(KERNEL_MAKE) -s kernelversion)
+
+export KDEB_PKGVERSION=$(KERNEL_RELEASE)-$(RELEASE)-ayufan
 
 KERNEL_MAKE ?= make \
-	EXTRAVERSION=$(KERNEL_EXTRAVERSION) \
 	ARCH=arm64 \
 	HOSTCC=aarch64-linux-gnu-gcc \
 	CROSS_COMPILE="ccache aarch64-linux-gnu-"
 
-KERNEL_RELEASE ?= $(shell $(KERNEL_MAKE) -s kernelversion)
-
 .config: arch/arm64/configs/$(KERNEL_DEFCONFIG)
 	$(KERNEL_MAKE) $(KERNEL_DEFCONFIG)
 
+.PHONY: .scmversion
+.scmversion:
+	@echo "-$(RELEASE)-ayufan-g$$(git rev-parse --short HEAD)" > .scmversion
+
 version:
-	@$(KERNEL_MAKE) -s kernelversion
+	@echo "$(KDEB_PKGVERSION)"
 
 .PHONY: info
-info: .config
+info: .config .scmversion
 	@$(KERNEL_MAKE) -s kernelrelease
 
 .PHONY: kernel-menuconfig
@@ -32,20 +34,20 @@ kernel-menuconfig:
 	mv defconfig arch/arm64/configs/$(KERNEL_DEFCONFIG)
 
 .PHONY: kernel-image
-kernel-image: .config
+kernel-image: .config .scmversion
 	$(KERNEL_MAKE) Image dtbs -j$$(nproc)
 
 .PHONY: kernel-modules
-kernel-image-and-modules: .config
+kernel-image-and-modules: .config .scmversion
 	$(KERNEL_MAKE) Image modules dtbs -j$$(nproc)
 	$(KERNEL_MAKE) modules_install INSTALL_MOD_PATH=$(CURDIR)/out/linux_modules
 
 .PHONY: kernel-package
-kernel-package: .config
+kernel-package: .config .scmversion
 	$(KERNEL_MAKE) bindeb-pkg -j$$(nproc)
 
 .PHONY: kernel-update-dts
-kernel-update-dts: .config
+kernel-update-dts: .config .scmversion
 	$(KERNEL_MAKE) dtbs -j$$(nproc)
 	rsync --partial --checksum -rv arch/arm64/boot/dts/rockchip/$(BOARD).dtb root@$(REMOTE_HOST):$(REMOTE_DIR)/boot/efi/dtb
 

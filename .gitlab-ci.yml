@@ -17,7 +17,29 @@ build:
   only: [branches]
   script:
     - rm -f ../*.deb
-    - export RELEASE=$(date +%Y%m%d%H%M)
+    - |
+      set -x
+
+      all_pipeline_ids() {
+        for i in $(seq 1 "${2:-10}"); do
+          result=$(curl "https://gitlab.com/$1/pipelines.json?page=$i" |
+            jq -r '.pipelines[].id')
+
+          [[ -z "$result" ]] && return 0
+          echo "$result"
+        done
+
+        echo "all_pipeline_ids: failed to get all ids" 1>&2
+        return 1
+      }
+
+      get_pipeline_iid() {
+        all_pipeline_ids "$1" "$3" | jq -r "select(. <= $2)" | wc -l
+      }
+
+      export RELEASE=$((1000+$(get_pipeline_iid "$CI_PROJECT_PATH" "$CI_PIPELINE_ID")))
+
+      echo "Current release is $RELEASE."
     - ./dev-make kernel-package
     - |
       set -x
