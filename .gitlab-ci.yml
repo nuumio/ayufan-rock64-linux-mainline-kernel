@@ -22,7 +22,7 @@ build:
 
       all_pipeline_ids() {
         for i in $(seq 1 "${2:-10}"); do
-          result=$(curl "https://gitlab.com/$1/pipelines.json?page=$i" |
+          result=$(curl --fail "https://gitlab.com/$1/pipelines.json?page=$i" |
             jq -r '.pipelines[].id')
 
           [[ -z "$result" ]] && return 0
