@@ -335,11 +335,10 @@
 		regulators {
 			vdd_center: DCDC_REG1 {
 				regulator-name = "vdd_center";
+				regulator-min-microvolt = <900000>;
+				regulator-max-microvolt = <900000>;
 				regulator-always-on;
 				regulator-boot-on;
-				regulator-min-microvolt = <750000>;
-				regulator-max-microvolt = <1350000>;
-				regulator-ramp-delay = <6001>;
 				regulator-state-mem {
 					regulator-off-in-suspend;
 				};
