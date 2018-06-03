@@ -455,7 +455,7 @@
 
 			loader@8000 {
 				label = "loader";
-				reg = <0x8000 0x3F8000>;
+				reg = <0x8000 0x3F0000>;
 			};
 		};
 	};
