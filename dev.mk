@@ -53,6 +53,6 @@ kernel-update-dts: .config .scmversion
 
 .PHONY: kernel-update
 kernel-update-image:
-	rsync --partial --checksum -rv arch/arm64/boot/Image root@$(REMOTE_HOST):$(REMOTE_DIR)/boot/efi/Image
-	rsync --partial --checksum -rv arch/arm64/boot/dts/rockchip/$(BOARD).dtb root@$(REMOTE_HOST):$(REMOTE_DIR)/boot/efi/dtb
+	rsync --partial --checksum -rv arch/arm64/boot/Image root@$(REMOTE_HOST):$(REMOTE_DIR)/boot/vmlinuz-4.4-rockchip-dev
+	rsync --partial --checksum --include="*.dtb" -rv arch/arm64/boot/dts/rockchip root@$(REMOTE_HOST):$(REMOTE_DIR)/boot/dtbs/4.4-rockchip-dev
 	rsync --partial --checksum -av out/linux_modules/lib/ root@$(REMOTE_HOST):$(REMOTE_DIR)/lib
