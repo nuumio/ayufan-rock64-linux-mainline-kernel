@@ -558,16 +558,6 @@
 	i2c-scl-rising-time-ns = <600>;
 	i2c-scl-falling-time-ns = <20>;
 	status = "okay";
-
-	fusb0: fusb30x@22 {
-		compatible = "fairchild,fusb302";
-		reg = <0x22>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&fusb0_int>;
-		vbus-5v-gpios = <&gpio1 3 GPIO_ACTIVE_LOW>;
-		int-n-gpios = <&gpio1 2 GPIO_ACTIVE_HIGH>;
-		status = "okay";
-	};
 };
 
 &i2s0 {
@@ -643,13 +633,6 @@
 	lcd-panel {
 		lcd_panel_reset: lcd-panel-reset {
 			rockchip,pins = <4 RK_PD6 RK_FUNC_GPIO &pcfg_pull_up>;
-		};
-	};
-
-	fusb30x {
-		fusb0_int: fusb0-int {
-			rockchip,pins =
-				<1 2 RK_FUNC_GPIO &pcfg_pull_up>;
 		};
 	};
 
@@ -749,7 +732,6 @@
 };
 
 &tcphy0 {
-	extcon = <&fusb0>;
 	status = "okay";
 };
 
@@ -767,7 +749,6 @@
 
 &u2phy0 {
 	status = "okay";
-	extcon = <&fusb0>;
 
 	u2phy0_otg: otg-port {
 		status = "okay";
@@ -819,7 +800,6 @@
 };
 
 &usbdrd3_0 {
-	extcon = <&fusb0>;
 	status = "okay";
 };
 
