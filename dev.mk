@@ -1,7 +1,5 @@
-RELEASE ?= 1
+RELEASE ?=
 KERNEL_DEFCONFIG ?= rockchip_linux_defconfig
-
-BOARD ?= rk3328-rock64
 
 KERNEL_RELEASE ?= $(shell $(KERNEL_MAKE) -s kernelversion)
 
@@ -17,7 +15,11 @@ KERNEL_MAKE ?= make \
 
 .PHONY: .scmversion
 .scmversion:
+ifneq (,$(RELEASE))
 	@echo "-$(RELEASE)-ayufan-g$$(git rev-parse --short HEAD)" > .scmversion
+else
+	@echo "-dev" > .scmversion
+endif
 
 version:
 	@echo "$(KDEB_PKGVERSION)"
