@@ -49,7 +49,7 @@ kernel-package: .config .scmversion
 .PHONY: kernel-update-dts
 kernel-update-dts: .config .scmversion
 	$(KERNEL_MAKE) dtbs -j$$(nproc)
-	rsync --partial --checksum -rv arch/arm64/boot/dts/rockchip/$(BOARD).dtb root@$(REMOTE_HOST):$(REMOTE_DIR)/boot/efi/dtb
+	rsync --partial --checksum --include="*.dtb" -rv arch/arm64/boot/dts/rockchip root@$(REMOTE_HOST):$(REMOTE_DIR)/boot/dtbs/4.4-rockchip-dev
 
 .PHONY: kernel-update
 kernel-update-image:
