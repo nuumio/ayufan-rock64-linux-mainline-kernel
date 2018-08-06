@@ -878,13 +878,14 @@
 
 &spi1 {
 	status = "okay";
+	max-freq = <10000000>;
 
 	spiflash: spi-flash@0 {
 		#address-cells = <0x1>;
 		#size-cells = <1>;
 		compatible = "jedec,spi-nor";
 		reg = <0x0>;
-		spi-max-frequency = <25000000>;
+		spi-max-frequency = <10000000>;
 		status = "okay";
 		m25p,fast-read;
 
