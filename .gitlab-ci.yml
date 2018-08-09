@@ -10,13 +10,14 @@ variables:
 stages: [build]
 
 before_script:
+  - ln -s "$PWD" /usr/src/kernel-build
+  - cd /usr/src/kernel-build
   - ccache -M 0 -F 0
 
 build:
   stage: build
   only: [branches]
   script:
-    - rm -f ../*.deb
     - export RELEASE=$((1000+$CI_PIPELINE_IID))
     - ./dev-make kernel-package
     - |
