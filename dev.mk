@@ -1,9 +1,9 @@
 RELEASE ?=
 KERNEL_DEFCONFIG ?= rockchip_linux_defconfig
 
-KERNEL_RELEASE ?= $(shell $(KERNEL_MAKE) -s kernelversion)
-
-export KDEB_PKGVERSION=$(KERNEL_RELEASE)-$(RELEASE)-ayufan
+KERNEL_VERSION ?= $(shell $(KERNEL_MAKE) -s kernelversion)
+KERNEL_RELEASE ?= $(shell $(KERNEL_MAKE) -s kernelrelease)
+KDEB_PKGVERSION ?= $(KERNEL_VERSION)-$(RELEASE)-ayufan
 
 KERNEL_MAKE ?= make \
 	ARCH=arm64 \
@@ -26,7 +26,7 @@ version:
 
 .PHONY: info
 info: .config .scmversion
-	@$(KERNEL_MAKE) -s kernelrelease
+	@echo $(KERNEL_RELEASE)
 
 .PHONY: kernel-menuconfig
 kernel-menuconfig:
@@ -46,15 +46,15 @@ kernel-image-and-modules: .config .scmversion
 
 .PHONY: kernel-package
 kernel-package: .config .scmversion
-	$(KERNEL_MAKE) bindeb-pkg -j$$(nproc)
+	KDEB_PKGVERSION=$(KDEB_PKGVERSION) $(KERNEL_MAKE) bindeb-pkg -j$$(nproc)
 
 .PHONY: kernel-update-dts
 kernel-update-dts: .config .scmversion
 	$(KERNEL_MAKE) dtbs -j$$(nproc)
-	rsync --partial --checksum --include="*.dtb" -rv arch/arm64/boot/dts/rockchip root@$(REMOTE_HOST):$(REMOTE_DIR)/boot/dtbs/4.4-rockchip-dev
+	rsync --partial --checksum --include="*.dtb" -rv arch/arm64/boot/dts/rockchip root@$(REMOTE_HOST):$(REMOTE_DIR)/boot/dtbs/$(KERNEL_RELEASE)
 
 .PHONY: kernel-update
-kernel-update-image:
-	rsync --partial --checksum -rv arch/arm64/boot/Image root@$(REMOTE_HOST):$(REMOTE_DIR)/boot/vmlinuz-4.4-rockchip-dev
-	rsync --partial --checksum --include="*.dtb" -rv arch/arm64/boot/dts/rockchip root@$(REMOTE_HOST):$(REMOTE_DIR)/boot/dtbs/4.4-rockchip-dev
-	rsync --partial --checksum -av out/linux_modules/lib/ root@$(REMOTE_HOST):$(REMOTE_DIR)/lib
+kernel-update-image: .scmversion
+	rsync --partial --checksum -rv arch/arm64/boot/Image root@$(REMOTE_HOST):$(REMOTE_DIR)/boot/vmlinuz-$(KERNEL_RELEASE)
+	rsync --partial --checksum --include="*.dtb" -rv arch/arm64/boot/dts/rockchip root@$(REMOTE_HOST):$(REMOTE_DIR)/boot/dtbs/$(KERNEL_RELEASE)
+	rsync --partial --checksum -av out/linux_modules/lib/modules/$(KERNEL_RELEASE) root@$(REMOTE_HOST):$(REMOTE_DIR)/lib/modules/$(KERNEL_RELEASE)
