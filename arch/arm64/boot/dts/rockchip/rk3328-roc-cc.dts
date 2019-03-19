@@ -101,6 +101,14 @@
 	};
 };
 
+&analog_sound {
+	status = "okay";
+};
+
+&codec {
+	status = "okay";
+};
+
 &cpu0 {
 	cpu-supply = <&vdd_arm>;
 };
@@ -155,6 +163,10 @@
 };
 
 &hdmiphy {
+	status = "okay";
+};
+
+&hdmi_sound {
 	status = "okay";
 };
 
@@ -269,6 +281,14 @@
 	};
 };
 
+&i2s0 {
+	status = "okay";
+};
+
+&i2s1 {
+	status = "okay";
+};
+
 &io_domains {
 	status = "okay";
 
@@ -315,6 +335,19 @@
 	sd-uhs-sdr104;
 	vmmc-supply = <&vcc_sd>;
 	vqmmc-supply = <&vccio_sd>;
+	status = "okay";
+};
+
+&spdif {
+	pinctrl-0 = <&spdifm0_tx>;
+	status = "okay";
+};
+
+&spdif_out {
+	status = "okay";
+};
+
+&spdif_sound {
 	status = "okay";
 };
 
