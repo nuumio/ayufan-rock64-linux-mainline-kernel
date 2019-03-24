@@ -185,8 +185,9 @@
 		regulators {
 			vdd_logic: DCDC_REG1 {
 				regulator-name = "vdd_logic";
-				regulator-min-microvolt = <712500>;
-				regulator-max-microvolt = <1450000>;
+				regulator-min-microvolt = <900000>;
+				regulator-max-microvolt = <1150000>;
+				regulator-ramp-delay = <12500>;
 				regulator-always-on;
 				regulator-boot-on;
 				regulator-state-mem {
@@ -197,8 +198,9 @@
 
 			vdd_arm: DCDC_REG2 {
 				regulator-name = "vdd_arm";
-				regulator-min-microvolt = <712500>;
-				regulator-max-microvolt = <1450000>;
+				regulator-min-microvolt = <950000>;
+				regulator-max-microvolt = <1350000>;
+				regulator-ramp-delay = <12500>;
 				regulator-always-on;
 				regulator-boot-on;
 				regulator-state-mem {
