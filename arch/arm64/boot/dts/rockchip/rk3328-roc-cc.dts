@@ -33,12 +33,12 @@
 		vin-supply = <&vcc_io>;
 	};
 
-	vcc_sdio: sdmmcio-regulator {
+	vccio_sd: sdmmcio-regulator {
 		compatible = "regulator-gpio";
 		gpios = <&grf_gpio 0 GPIO_ACTIVE_HIGH>;
 		states = <1800000 0x1
 			  3300000 0x0>;
-		regulator-name = "vcc_sdio";
+		regulator-name = "vccio_sd";
 		regulator-type = "voltage";
 		regulator-min-microvolt = <1800000>;
 		regulator-max-microvolt = <3300000>;
@@ -272,7 +272,7 @@
 
 	vccio1-supply = <&vcc_io>;
 	vccio2-supply = <&vcc18_emmc>;
-	vccio3-supply = <&vcc_sdio>;
+	vccio3-supply = <&vccio_sd>;
 	vccio4-supply = <&vcc_18>;
 	vccio5-supply = <&vcc_io>;
 	vccio6-supply = <&vcc_io>;
@@ -312,7 +312,7 @@
 	sd-uhs-sdr50;
 	sd-uhs-sdr104;
 	vmmc-supply = <&vcc_sd>;
-	vqmmc-supply = <&vcc_sdio>;
+	vqmmc-supply = <&vccio_sd>;
 	status = "okay";
 };
 
