@@ -41,8 +41,6 @@
 #define DDC_CI_ADDR		0x37
 #define DDC_SEGMENT_ADDR	0x30
 
-#define HDMI_EDID_LEN		512
-
 /* DW-HDMI Controller >= 0x200a are at least compliant with SCDC version 1 */
 #define SCDC_MIN_SOURCE_VERSION	0x1
 
@@ -151,8 +149,6 @@ struct dw_hdmi {
 	const struct dw_hdmi_plat_data *plat_data;
 
 	int vic;
-
-	u8 edid[HDMI_EDID_LEN];
 
 	struct {
 		const struct dw_hdmi_phy_ops *ops;
