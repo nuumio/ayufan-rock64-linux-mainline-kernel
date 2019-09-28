@@ -2413,6 +2413,13 @@ static void dw_hdmi_connector_force(struct drm_connector *connector)
 	dw_hdmi_update_power(hdmi);
 	dw_hdmi_update_phy_mask(hdmi);
 	mutex_unlock(&hdmi->mutex);
+
+	dw_hdmi_clear_edid(connector);
+
+	if (connector->status != connector_status_connected)
+		return;
+
+	dw_hdmi_get_edid(connector);
 }
 
 static const struct drm_connector_funcs dw_hdmi_connector_funcs = {
