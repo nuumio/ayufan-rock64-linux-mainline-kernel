@@ -1667,6 +1667,8 @@ static void hdmi_config_AVI(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
 
 	drm_hdmi_avi_infoframe_content_type(&frame, conn_state);
 
+	hdmi_infoframe_log(KERN_INFO, hdmi->dev, (union hdmi_infoframe *)&frame);
+
 	/*
 	 * The Designware IP uses a different byte format from standard
 	 * AVI info frames, though generally the bits are in the correct
@@ -1755,6 +1757,8 @@ static void hdmi_config_spd_infoframe(struct dw_hdmi *hdmi)
 		return;
 	}
 
+	hdmi_infoframe_log(KERN_INFO, hdmi->dev, (union hdmi_infoframe *)&frame);
+
 	for (i = 0; i < frame.length; i++)
 		hdmi_writeb(hdmi, buffer[4 + i], HDMI_FC_SPDVENDORNAME0 + i);
 
@@ -1768,6 +1772,9 @@ static void hdmi_config_vendor_specific_infoframe(struct dw_hdmi *hdmi,
 	struct hdmi_vendor_infoframe frame;
 	u8 buffer[10];
 	ssize_t err;
+
+	hdmi_mask_writeb(hdmi, 0, HDMI_FC_DATAUTO0, HDMI_FC_DATAUTO0_VSD_OFFSET,
+			HDMI_FC_DATAUTO0_VSD_MASK);
 
 	err = drm_hdmi_vendor_infoframe_from_display_mode(&frame,
 							  &hdmi->connector,
@@ -1787,8 +1794,8 @@ static void hdmi_config_vendor_specific_infoframe(struct dw_hdmi *hdmi,
 			err);
 		return;
 	}
-	hdmi_mask_writeb(hdmi, 0, HDMI_FC_DATAUTO0, HDMI_FC_DATAUTO0_VSD_OFFSET,
-			HDMI_FC_DATAUTO0_VSD_MASK);
+
+	hdmi_infoframe_log(KERN_INFO, hdmi->dev, (union hdmi_infoframe *)&frame);
 
 	/* Set the length of HDMI vendor specific InfoFrame payload */
 	hdmi_writeb(hdmi, buffer[2], HDMI_FC_VSDSIZE);
@@ -1833,6 +1840,8 @@ static void hdmi_config_drm_infoframe(struct dw_hdmi *hdmi)
 		dev_err(hdmi->dev, "Failed to pack drm infoframe: %zd\n", err);
 		return;
 	}
+
+	hdmi_infoframe_log(KERN_INFO, hdmi->dev, (union hdmi_infoframe *)&frame);
 
 	hdmi_writeb(hdmi, frame.version, HDMI_FC_DRM_HB0);
 	hdmi_writeb(hdmi, frame.length, HDMI_FC_DRM_HB1);
@@ -2370,6 +2379,9 @@ dw_hdmi_connector_detect(struct drm_connector *connector, bool force)
 					     connector);
 	enum drm_connector_status status;
 
+	DRM_DEBUG_KMS("[CONNECTOR:%d:%s] force=%d\n",
+		      connector->base.id, connector->name, force);
+
 	mutex_lock(&hdmi->mutex);
 	hdmi->force = DRM_FORCE_UNSPECIFIED;
 	dw_hdmi_update_power(hdmi);
@@ -2392,6 +2404,9 @@ static int dw_hdmi_connector_get_modes(struct drm_connector *connector)
 {
 	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
 					     connector);
+
+	DRM_DEBUG_KMS("[CONNECTOR:%d:%s]\n",
+		      connector->base.id, connector->name);
 
 	return drm_add_edid_modes(connector, hdmi->cached_edid);
 }
@@ -2431,6 +2446,12 @@ static int dw_hdmi_connector_atomic_check(struct drm_connector *connector,
 			return PTR_ERR(crtc_state);
 
 		crtc_state->mode_changed = true;
+
+		DRM_DEBUG_KMS("[CONNECTOR:%d:%s] hdr_metadata_equal=false\n",
+			      connector->base.id, connector->name);
+	} else {
+		DRM_DEBUG_KMS("[CONNECTOR:%d:%s] hdr_metadata_equal=true\n",
+			      connector->base.id, connector->name);
 	}
 
 	return 0;
@@ -2440,6 +2461,9 @@ static void dw_hdmi_connector_force(struct drm_connector *connector)
 {
 	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
 					     connector);
+
+	DRM_DEBUG_KMS("[CONNECTOR:%d:%s]\n",
+		      connector->base.id, connector->name);
 
 	mutex_lock(&hdmi->mutex);
 	hdmi->force = connector->force;
