@@ -47,3 +47,11 @@ provides three tools to handle CEC:
   determine how compliant the CEC implementation is.
 
 - cec-follower: emulates a CEC follower.
+
+Debouncing
+----------
+
+The ``debounce_ms`` option is a module parameter that can be used to enabled
+debouncing of setting invalid physical address.
+
+FIXME: Make a section "1.1 Debouncing" that explains this module option.

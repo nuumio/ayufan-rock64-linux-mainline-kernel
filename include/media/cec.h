@@ -164,6 +164,8 @@ struct cec_adapter {
 	wait_queue_head_t kthread_waitq;
 	wait_queue_head_t waitq;
 
+	struct delayed_work debounce_work;
+
 	const struct cec_adap_ops *ops;
 	void *priv;
 	u32 capabilities;
