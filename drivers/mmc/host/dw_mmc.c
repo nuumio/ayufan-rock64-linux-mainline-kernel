@@ -1495,6 +1495,9 @@ static void dw_mci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 			regulator_disable(mmc->supply.vqmmc);
 		slot->host->vqmmc_enabled = false;
 
+		if (drv_data && drv_data->power_off)
+			drv_data->power_off(slot->host);
+
 		regs = mci_readl(slot->host, PWREN);
 		regs &= ~(1 << slot->id);
 		mci_writel(slot->host, PWREN, regs);
