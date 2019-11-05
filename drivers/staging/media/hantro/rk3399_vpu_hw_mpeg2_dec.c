@@ -127,7 +127,7 @@ rk3399_vpu_mpeg2_dec_set_buffers(struct hantro_dev *vpu,
 	current_addr = addr;
 
 	if (picture->picture_structure == PICT_BOTTOM_FIELD)
-		addr += ALIGN(ctx->dst_fmt.width, 16);
+		addr += ALIGN(ctx->src_fmt.width, MB_DIM);
 	vdpu_write_relaxed(vpu, addr, VDPU_REG_DEC_OUT_BASE);
 
 	if (!forward_addr)
@@ -220,8 +220,8 @@ void rk3399_vpu_mpeg2_dec_run(struct hantro_ctx *ctx)
 	      VDPU_REG_DEC_CLK_GATE_E(1);
 	vdpu_write_relaxed(vpu, reg, VDPU_SWREG(57));
 
-	reg = VDPU_REG_PIC_MB_WIDTH(MB_WIDTH(ctx->dst_fmt.width)) |
-	      VDPU_REG_PIC_MB_HEIGHT_P(MB_HEIGHT(ctx->dst_fmt.height)) |
+	reg = VDPU_REG_PIC_MB_WIDTH(MB_WIDTH(ctx->src_fmt.width)) |
+	      VDPU_REG_PIC_MB_HEIGHT_P(MB_HEIGHT(ctx->src_fmt.height)) |
 	      VDPU_REG_ALT_SCAN_E(picture->alternate_scan) |
 	      VDPU_REG_TOPFIELDFIRST_E(picture->top_field_first);
 	vdpu_write_relaxed(vpu, reg, VDPU_SWREG(120));
