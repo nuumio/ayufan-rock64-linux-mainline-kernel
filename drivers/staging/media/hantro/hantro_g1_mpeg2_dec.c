@@ -125,7 +125,7 @@ hantro_g1_mpeg2_dec_set_buffers(struct hantro_dev *vpu, struct hantro_ctx *ctx,
 	current_addr = addr;
 
 	if (picture->picture_structure == PICT_BOTTOM_FIELD)
-		addr += ALIGN(ctx->dst_fmt.width, 16);
+		addr += ALIGN(ctx->src_fmt.width, MB_DIM);
 	vdpu_write_relaxed(vpu, addr, G1_REG_DEC_OUT_BASE);
 
 	if (!forward_addr)
@@ -204,8 +204,8 @@ void hantro_g1_mpeg2_dec_run(struct hantro_ctx *ctx)
 	      G1_REG_DEC_AXI_WR_ID(0);
 	vdpu_write_relaxed(vpu, reg, G1_SWREG(3));
 
-	reg = G1_REG_PIC_MB_WIDTH(MB_WIDTH(ctx->dst_fmt.width)) |
-	      G1_REG_PIC_MB_HEIGHT_P(MB_HEIGHT(ctx->dst_fmt.height)) |
+	reg = G1_REG_PIC_MB_WIDTH(MB_WIDTH(ctx->src_fmt.width)) |
+	      G1_REG_PIC_MB_HEIGHT_P(MB_HEIGHT(ctx->src_fmt.height)) |
 	      G1_REG_ALT_SCAN_E(picture->alternate_scan) |
 	      G1_REG_TOPFIELDFIRST_E(picture->top_field_first);
 	vdpu_write_relaxed(vpu, reg, G1_SWREG(4));
