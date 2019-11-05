@@ -430,8 +430,8 @@ void hantro_g1_vp8_dec_run(struct hantro_ctx *ctx)
 {
 	const struct v4l2_ctrl_vp8_frame_header *hdr;
 	struct hantro_dev *vpu = ctx->dev;
-	size_t height = ctx->dst_fmt.height;
-	size_t width = ctx->dst_fmt.width;
+	size_t height = ctx->src_fmt.height;
+	size_t width = ctx->src_fmt.width;
 	u32 mb_width, mb_height;
 	u32 reg;
 
