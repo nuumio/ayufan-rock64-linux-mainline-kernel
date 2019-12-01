@@ -228,6 +228,19 @@ static void handle_plugged_change(struct dw_hdmi *hdmi, bool plugged)
 		hdmi->plugged_cb(hdmi->codec_dev, plugged);
 }
 
+static void dw_hdmi_update_connector_status(struct dw_hdmi *hdmi,
+                                            enum drm_connector_status status)
+{
+	mutex_lock(&hdmi->mutex);
+	if (status != hdmi->last_connector_status) {
+		dev_dbg(hdmi->dev, "connector status: %d", status);
+		handle_plugged_change(hdmi,
+				      status == connector_status_connected);
+		hdmi->last_connector_status = status;
+	}
+	mutex_unlock(&hdmi->mutex);
+}
+
 int dw_hdmi_set_plugged_cb(struct dw_hdmi *hdmi, hdmi_codec_plugged_cb fn,
 			   struct device *codec_dev)
 {
@@ -2289,14 +2302,7 @@ dw_hdmi_connector_detect(struct drm_connector *connector, bool force)
 
 	status = hdmi->phy.ops->read_hpd(hdmi, hdmi->phy.data);
 
-	mutex_lock(&hdmi->mutex);
-	if (status != hdmi->last_connector_status) {
-		dev_dbg(hdmi->dev, "connector status: %d", status);
-		handle_plugged_change(hdmi,
-				      status == connector_status_connected);
-		hdmi->last_connector_status = status;
-	}
-	mutex_unlock(&hdmi->mutex);
+	dw_hdmi_update_connector_status(hdmi, status);
 
 	return status;
 }
