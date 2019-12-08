@@ -197,7 +197,7 @@ struct dw_hdmi {
 
 	hdmi_codec_plugged_cb plugged_cb;
 	struct device *codec_dev;
-	enum drm_connector_status last_connector_result;
+	enum drm_connector_status last_connector_status;
 };
 
 #define HDMI_IH_PHY_STAT0_RX_SENSE \
@@ -236,7 +236,7 @@ int dw_hdmi_set_plugged_cb(struct dw_hdmi *hdmi, hdmi_codec_plugged_cb fn,
 	mutex_lock(&hdmi->mutex);
 	hdmi->plugged_cb = fn;
 	hdmi->codec_dev = codec_dev;
-	plugged = hdmi->last_connector_result == connector_status_connected;
+	plugged = hdmi->last_connector_status == connector_status_connected;
 	handle_plugged_change(hdmi, plugged);
 	mutex_unlock(&hdmi->mutex);
 
@@ -2279,7 +2279,7 @@ dw_hdmi_connector_detect(struct drm_connector *connector, bool force)
 {
 	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
 					     connector);
-	enum drm_connector_status result;
+	enum drm_connector_status status;
 
 	mutex_lock(&hdmi->mutex);
 	hdmi->force = DRM_FORCE_UNSPECIFIED;
@@ -2287,18 +2287,18 @@ dw_hdmi_connector_detect(struct drm_connector *connector, bool force)
 	dw_hdmi_update_phy_mask(hdmi);
 	mutex_unlock(&hdmi->mutex);
 
-	result = hdmi->phy.ops->read_hpd(hdmi, hdmi->phy.data);
+	status = hdmi->phy.ops->read_hpd(hdmi, hdmi->phy.data);
 
 	mutex_lock(&hdmi->mutex);
-	if (result != hdmi->last_connector_result) {
-		dev_dbg(hdmi->dev, "read_hpd result: %d", result);
+	if (status != hdmi->last_connector_status) {
+		dev_dbg(hdmi->dev, "connector status: %d", status);
 		handle_plugged_change(hdmi,
-				      result == connector_status_connected);
-		hdmi->last_connector_result = result;
+				      status == connector_status_connected);
+		hdmi->last_connector_status = status;
 	}
 	mutex_unlock(&hdmi->mutex);
 
-	return result;
+	return status;
 }
 
 static int dw_hdmi_connector_get_modes(struct drm_connector *connector)
@@ -3084,7 +3084,7 @@ __dw_hdmi_probe(struct platform_device *pdev,
 	hdmi->rxsense = true;
 	hdmi->phy_mask = (u8)~(HDMI_PHY_HPD | HDMI_PHY_RX_SENSE);
 	hdmi->mc_clkdis = 0x7f;
-	hdmi->last_connector_result = connector_status_disconnected;
+	hdmi->last_connector_status = connector_status_disconnected;
 
 	mutex_init(&hdmi->mutex);
 	mutex_init(&hdmi->audio_mutex);
