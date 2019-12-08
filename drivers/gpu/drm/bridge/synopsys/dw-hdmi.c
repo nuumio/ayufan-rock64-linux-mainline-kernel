@@ -1673,6 +1673,9 @@ static void hdmi_config_AVI(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
 			HDMI_EXTENDED_COLORIMETRY_XV_YCC_601;
 	}
 
+	drm_hdmi_avi_infoframe_quant_range(&frame, &hdmi->connector, mode,
+					   drm_default_rgb_quant_range(mode));
+
 	drm_hdmi_avi_infoframe_content_type(&frame, conn_state);
 
 	hdmi_infoframe_log(KERN_INFO, hdmi->dev, (union hdmi_infoframe *)&frame);
