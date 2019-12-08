@@ -139,21 +139,21 @@
 #define HDMI_FC_SPDVENDORNAME5                  0x104F
 #define HDMI_FC_SPDVENDORNAME6                  0x1050
 #define HDMI_FC_SPDVENDORNAME7                  0x1051
-#define HDMI_FC_SDPPRODUCTNAME0                 0x1052
-#define HDMI_FC_SDPPRODUCTNAME1                 0x1053
-#define HDMI_FC_SDPPRODUCTNAME2                 0x1054
-#define HDMI_FC_SDPPRODUCTNAME3                 0x1055
-#define HDMI_FC_SDPPRODUCTNAME4                 0x1056
-#define HDMI_FC_SDPPRODUCTNAME5                 0x1057
-#define HDMI_FC_SDPPRODUCTNAME6                 0x1058
-#define HDMI_FC_SDPPRODUCTNAME7                 0x1059
-#define HDMI_FC_SDPPRODUCTNAME8                 0x105A
-#define HDMI_FC_SDPPRODUCTNAME9                 0x105B
-#define HDMI_FC_SDPPRODUCTNAME10                0x105C
-#define HDMI_FC_SDPPRODUCTNAME11                0x105D
-#define HDMI_FC_SDPPRODUCTNAME12                0x105E
-#define HDMI_FC_SDPPRODUCTNAME13                0x105F
-#define HDMI_FC_SDPPRODUCTNAME14                0x1060
+#define HDMI_FC_SPDPRODUCTNAME0                 0x1052
+#define HDMI_FC_SPDPRODUCTNAME1                 0x1053
+#define HDMI_FC_SPDPRODUCTNAME2                 0x1054
+#define HDMI_FC_SPDPRODUCTNAME3                 0x1055
+#define HDMI_FC_SPDPRODUCTNAME4                 0x1056
+#define HDMI_FC_SPDPRODUCTNAME5                 0x1057
+#define HDMI_FC_SPDPRODUCTNAME6                 0x1058
+#define HDMI_FC_SPDPRODUCTNAME7                 0x1059
+#define HDMI_FC_SPDPRODUCTNAME8                 0x105A
+#define HDMI_FC_SPDPRODUCTNAME9                 0x105B
+#define HDMI_FC_SPDPRODUCTNAME10                0x105C
+#define HDMI_FC_SPDPRODUCTNAME11                0x105D
+#define HDMI_FC_SPDPRODUCTNAME12                0x105E
+#define HDMI_FC_SPDPRODUCTNAME13                0x105F
+#define HDMI_FC_SPDPRODUCTNAME14                0x1060
 #define HDMI_FC_SPDPRODUCTNAME15                0x1061
 #define HDMI_FC_SPDDEVICEINF                    0x1062
 #define HDMI_FC_AUDSCONF                        0x1063
@@ -849,6 +849,8 @@ enum {
 /* FC_DATAUTO0 field values */
 	HDMI_FC_DATAUTO0_VSD_MASK = 0x08,
 	HDMI_FC_DATAUTO0_VSD_OFFSET = 3,
+	HDMI_FC_DATAUTO0_SPD_MASK = 0x10,
+	HDMI_FC_DATAUTO0_SPD_OFFSET = 4,
 
 /* PHY_CONF0 field values */
 	HDMI_PHY_CONF0_PDZ_MASK = 0x80,

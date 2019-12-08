@@ -1733,6 +1733,35 @@ static void hdmi_config_AVI(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
 	hdmi_writeb(hdmi, (frame.right_bar >> 8) & 0xff, HDMI_FC_AVISRB1);
 }
 
+static void hdmi_config_spd_infoframe(struct dw_hdmi *hdmi)
+{
+	struct hdmi_spd_infoframe frame;
+	u8 buffer[29];
+	ssize_t err;
+	int i;
+
+	hdmi_mask_writeb(hdmi, 0, HDMI_FC_DATAUTO0, HDMI_FC_DATAUTO0_SPD_OFFSET,
+			HDMI_FC_DATAUTO0_SPD_MASK);
+
+	err = hdmi_spd_infoframe_init(&frame, "DW", "HDMI");
+	if (err < 0)
+		return;
+
+	frame.sdi = HDMI_SPD_SDI_PC;
+
+	err = hdmi_spd_infoframe_pack(&frame, buffer, sizeof(buffer));
+	if (err < 0) {
+		dev_err(hdmi->dev, "Failed to pack spd infoframe: %zd\n", err);
+		return;
+	}
+
+	for (i = 0; i < frame.length; i++)
+		hdmi_writeb(hdmi, buffer[4 + i], HDMI_FC_SPDVENDORNAME0 + i);
+
+	hdmi_mask_writeb(hdmi, 1, HDMI_FC_DATAUTO0, HDMI_FC_DATAUTO0_SPD_OFFSET,
+			HDMI_FC_DATAUTO0_SPD_MASK);
+}
+
 static void hdmi_config_vendor_specific_infoframe(struct dw_hdmi *hdmi,
 						 struct drm_display_mode *mode)
 {
@@ -1775,12 +1804,6 @@ static void hdmi_config_vendor_specific_infoframe(struct dw_hdmi *hdmi,
 
 	if (frame.s3d_struct >= HDMI_3D_STRUCTURE_SIDE_BY_SIDE_HALF)
 		hdmi_writeb(hdmi, buffer[9], HDMI_FC_VSDPAYLOAD2);
-
-	/* Packet frame interpolation */
-	hdmi_writeb(hdmi, 1, HDMI_FC_DATAUTO1);
-
-	/* Auto packets per frame and line spacing */
-	hdmi_writeb(hdmi, 0x11, HDMI_FC_DATAUTO2);
 
 	/* Configures the Frame Composer On RDRB mode */
 	hdmi_mask_writeb(hdmi, 1, HDMI_FC_DATAUTO0, HDMI_FC_DATAUTO0_VSD_OFFSET,
@@ -2160,8 +2183,15 @@ static int dw_hdmi_setup(struct dw_hdmi *hdmi, struct drm_display_mode *mode)
 
 		/* HDMI Initialization Step F - Configure AVI InfoFrame */
 		hdmi_config_AVI(hdmi, mode);
+		hdmi_config_spd_infoframe(hdmi);
 		hdmi_config_vendor_specific_infoframe(hdmi, mode);
 		hdmi_config_drm_infoframe(hdmi);
+
+		/* Packet frame interpolation */
+		hdmi_writeb(hdmi, 1, HDMI_FC_DATAUTO1);
+
+		/* Auto packets per frame and line spacing */
+		hdmi_writeb(hdmi, 0x11, HDMI_FC_DATAUTO2);
 	} else {
 		dev_dbg(hdmi->dev, "%s DVI mode\n", __func__);
 	}
