@@ -317,6 +317,16 @@ static void dw_hdmi_rockchip_bridge_enable(struct drm_bridge *bridge)
 		      ret ? "LIT" : "BIG");
 }
 
+static bool is_rgb(u32 format)
+{
+	switch (format) {
+	case MEDIA_BUS_FMT_RGB888_1X24:
+		return true;
+	default:
+		return false;
+	}
+}
+
 static int
 dw_hdmi_rockchip_bridge_atomic_check(struct drm_bridge *bridge,
 				     struct drm_bridge_state *bridge_state,
@@ -331,11 +341,36 @@ dw_hdmi_rockchip_bridge_atomic_check(struct drm_bridge *bridge,
 	return 0;
 }
 
+static u32 *dw_hdmi_rockchip_get_input_bus_fmts(struct drm_bridge *bridge,
+					struct drm_bridge_state *bridge_state,
+					struct drm_crtc_state *crtc_state,
+					struct drm_connector_state *conn_state,
+					u32 output_fmt,
+					unsigned int *num_input_fmts)
+{
+	u32 *input_fmt;
+
+	*num_input_fmts = 0;
+
+	if (!is_rgb(output_fmt))
+		return NULL;
+
+	input_fmt = kzalloc(sizeof(*input_fmt), GFP_KERNEL);
+	if (!input_fmt)
+		return NULL;
+
+	*num_input_fmts = 1;
+	*input_fmt = output_fmt;
+
+	return input_fmt;
+}
+
 static const struct drm_bridge_funcs dw_hdmi_rockchip_bridge_funcs = {
 	.mode_valid = dw_hdmi_rockchip_bridge_mode_valid,
 	.mode_set = dw_hdmi_rockchip_bridge_mode_set,
 	.enable = dw_hdmi_rockchip_bridge_enable,
 	.atomic_check = dw_hdmi_rockchip_bridge_atomic_check,
+	.atomic_get_input_bus_fmts = dw_hdmi_rockchip_get_input_bus_fmts,
 };
 
 static int dw_hdmi_rockchip_genphy_init(struct dw_hdmi *dw_hdmi, void *data,
