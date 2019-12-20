@@ -2328,10 +2328,14 @@ static void dw_hdmi_poweron(struct dw_hdmi *hdmi)
 	hdmi->bridge_is_on = true;
 	dw_hdmi_get_edid(&hdmi->connector);
 	dw_hdmi_setup(hdmi, &hdmi->previous_mode);
+
+	hdmi_writeb(hdmi, HDMI_FC_GCP_CLEAR_AVMUTE, HDMI_FC_GCP);
 }
 
 static void dw_hdmi_poweroff(struct dw_hdmi *hdmi)
 {
+	hdmi_writeb(hdmi, HDMI_FC_GCP_SET_AVMUTE, HDMI_FC_GCP);
+
 	if (hdmi->phy.enabled) {
 		hdmi->phy.ops->disable(hdmi, hdmi->phy.data);
 		hdmi->phy.enabled = false;
