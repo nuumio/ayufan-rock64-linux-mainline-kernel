@@ -1402,13 +1402,21 @@ static void vop_crtc_destroy(struct drm_crtc *crtc)
 
 static struct drm_crtc_state *vop_crtc_duplicate_state(struct drm_crtc *crtc)
 {
-	struct rockchip_crtc_state *rockchip_state;
+	struct rockchip_crtc_state *rockchip_state, *s;
+
+	if (WARN_ON(!crtc->state))
+		return NULL;
 
 	rockchip_state = kzalloc(sizeof(*rockchip_state), GFP_KERNEL);
 	if (!rockchip_state)
 		return NULL;
 
 	__drm_atomic_helper_crtc_duplicate_state(crtc, &rockchip_state->base);
+
+	s = to_rockchip_crtc_state(crtc->state);
+	rockchip_state->bus_format = s->bus_format;
+	rockchip_state->bus_width = s->bus_width;
+
 	return &rockchip_state->base;
 }
 
