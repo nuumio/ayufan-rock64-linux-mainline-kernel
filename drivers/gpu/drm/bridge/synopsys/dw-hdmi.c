@@ -966,6 +966,14 @@ static void hdmi_video_sample(struct dw_hdmi *hdmi)
 
 static int is_color_space_conversion(struct dw_hdmi *hdmi)
 {
+	if (hdmi_bus_fmt_is_yuv444(hdmi->hdmi_data.enc_in_bus_format) &&
+	    hdmi_bus_fmt_is_yuv422(hdmi->hdmi_data.enc_out_bus_format))
+		return 0;
+
+	if (hdmi_bus_fmt_is_yuv422(hdmi->hdmi_data.enc_in_bus_format) &&
+	    hdmi_bus_fmt_is_yuv444(hdmi->hdmi_data.enc_out_bus_format))
+		return 0;
+
 	return hdmi->hdmi_data.enc_in_bus_format != hdmi->hdmi_data.enc_out_bus_format;
 }
 
@@ -2050,7 +2058,9 @@ static void dw_hdmi_enable_video_path(struct dw_hdmi *hdmi)
 	hdmi_writeb(hdmi, hdmi->mc_clkdis, HDMI_MC_CLKDIS);
 
 	/* Enable csc path */
-	if (is_color_space_conversion(hdmi)) {
+	if (is_color_space_conversion(hdmi) ||
+	    is_color_space_decimation(hdmi) ||
+	    is_color_space_interpolation(hdmi)) {
 		hdmi->mc_clkdis &= ~HDMI_MC_CLKDIS_CSCCLK_DISABLE;
 		hdmi_writeb(hdmi, hdmi->mc_clkdis, HDMI_MC_CLKDIS);
 	}
