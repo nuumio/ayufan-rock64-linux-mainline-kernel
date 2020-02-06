@@ -5,6 +5,7 @@
  */
 
 /dts-v1/;
+#include <dt-bindings/input/gpio-keys.h>
 #include <dt-bindings/input/linux-event-codes.h>
 #include <dt-bindings/pwm/pwm.h>
 #include <dt-bindings/usb/pd.h>
@@ -80,10 +81,12 @@
 		};
 	};
 
-	gpio-keys {
+	/* Use separate nodes for gpio-keys to enable selective deactivation of
+	   wakeup sources without disabling the whole key */
+	gpio-key-power {
 		compatible = "gpio-keys";
 		pinctrl-names = "default";
-		pinctrl-0 = <&pwrbtn &lidbtn>;
+		pinctrl-0 = <&pwrbtn>;
 
 		power {
 			debounce-interval = <20>;
@@ -92,6 +95,12 @@
 			linux,code = <KEY_POWER>;
 			wakeup-source;
 		};
+	};
+
+	gpio-key-lid {
+		compatible = "gpio-keys";
+		pinctrl-names = "default";
+		pinctrl-0 = <&lidbtn>;
 
 		lid {
 			debounce-interval = <20>;
@@ -99,6 +108,7 @@
 			label = "Lid";
 			linux,code = <SW_LID>;
 			linux,input-type = <EV_SW>;
+			wakeup-event-action = <EV_ACT_DEASSERTED>;
 			wakeup-source;
 		};
 	};
