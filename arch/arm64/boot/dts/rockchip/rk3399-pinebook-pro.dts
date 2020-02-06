@@ -209,7 +209,7 @@
 		status = "okay";
 		compatible = "simple-audio-amplifier";
 		enable-gpios = <&gpio4 RK_PD3 GPIO_ACTIVE_HIGH>;
-		vcc-supply = <&pa_5v>;
+		VCC-supply = <&pa_5v>;
 		sound-name-prefix = "Speaker Amplifier";
 	};
 
