@@ -410,6 +410,20 @@
 		};
 	};
 
+	/* Regualtors supplied by vcc_1v8 */
+	/* Primary 0.9 V LDO */
+	vcca0v9_s3: vcca0v9-s3 {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc0v9_s3";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		vin-supply = <&vcc_1v8>;
+
+		regulator-state-mem {
+			regulator-on-in-suspend;
+		};
+	};
+
 	mains_charger: dc-charger {
 		compatible = "gpio-charger";
 		charger-type = "mains";
@@ -871,6 +885,8 @@
 	max-link-speed = <2>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pcie_clkreqn_cpm>;
+	vpcie0v9-supply = <&vcca0v9_s3>;
+	vpcie1v8-supply = <&vcca1v8_s3>;
 	vpcie3v3-supply = <&vcc3v3_ssd>;
 	bus-scan-delay-ms = <1000>;
 	status = "okay";
