@@ -17,6 +17,13 @@
 	model = "Pine64 Pinebook Pro";
 	compatible = "pine64,pinebook-pro", "rockchip,rk3399";
 
+	/* first 128k(0xff8d0000~0xff8f0000) for ddr and suspend */
+	iram: sram@ff8d0000 {
+		compatible = "mmio-sram";
+		reg = <0x0 0xff8d0000 0x0 0x20000>; /* 128k */
+	};
+
+
 	edp_panel: edp-panel {
 		compatible = "boe,nv140fhmn49", "simple-panel";
 		backlight = <&backlight>;
