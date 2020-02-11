@@ -56,13 +56,12 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&pwrled &slpled>;
 
-		/* Hack using active_low as inversion. A real, inverted trigger would be nicer */
 		green-led {
-			gpios = <&gpio0 RK_PB3 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio0 RK_PB3 GPIO_ACTIVE_HIGH>;
 			label = "green:disk-activity";
 			function = LED_FUNCTION_POWER;
-			linux,default-trigger = "disk-activity";
-			default-state = "off";
+			linux,default-trigger = "mmc2-inverted";
+			default-state = "on";
 			color = <LED_COLOR_ID_GREEN>;
 		};
 
