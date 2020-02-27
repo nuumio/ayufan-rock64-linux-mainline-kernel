@@ -26,7 +26,7 @@
 	leds {
 		compatible = "gpio-leds";
 		pinctrl-names = "default";
-		pinctrl-0 = <&pwrled &slpled>;
+		pinctrl-0 = <&pwrled_gpio &slpled_gpio>;
 
 		green-led {
 			color = <LED_COLOR_ID_GREEN>;
@@ -48,12 +48,12 @@
 		};
 	};
 
-	/* Use separate nodes for gpio-keys to allow for selective deactivation of
-	   wakeup sources without disabling the whole key */
+	/* Use separate nodes for gpio-keys to allow for selective deactivation
+	   of wakeup sources without disabling the whole key */
 	gpio-key-power {
 		compatible = "gpio-keys";
 		pinctrl-names = "default";
-		pinctrl-0 = <&pwrbtn>;
+		pinctrl-0 = <&pwrbtn_gpio>;
 
 		power {
 			debounce-interval = <20>;
@@ -67,7 +67,7 @@
 	gpio-key-lid {
 		compatible = "gpio-keys";
 		pinctrl-names = "default";
-		pinctrl-0 = <&lidbtn>;
+		pinctrl-0 = <&lidbtn_gpio>;
 
 		lid {
 			debounce-interval = <20>;
@@ -93,7 +93,7 @@
 		enable-delay-ms = <20>;
 		enable-gpios = <&gpio1 RK_PA0 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&panel_en>;
+		pinctrl-0 = <&panel_en_gpio>;
 
 		power-supply = <&vcc3v3_panel>;
 		prepare-delay-ms = <20>;
@@ -157,7 +157,7 @@
 		clocks = <&rk808 1>;
 		clock-names = "ext_clock";
 		pinctrl-names = "default";
-		pinctrl-0 = <&wifi_enable_h>;
+		pinctrl-0 = <&wifi_enable_h_gpio>;
 		post-power-on-delay-ms = <100>;
 		power-off-delay-us = <500000>;
 
@@ -255,7 +255,7 @@
 		enable-active-high;
 		gpio = <&gpio1 RK_PB5 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&pwr_5v>;
+		pinctrl-0 = <&pwr_5v_gpio>;
 		regulator-always-on;
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
@@ -312,7 +312,7 @@
 		enable-active-high;
 		gpio = <&gpio0 RK_PA1 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&sdmmc0_pwr_h>;
+		pinctrl-0 = <&sdmmc0_pwr_h_gpio>;
 		regulator-always-on;
 		regulator-min-microvolt = <3000000>;
 		regulator-max-microvolt = <3000000>;
@@ -330,7 +330,7 @@
 		enable-active-high;
 		gpio = <&gpio1 RK_PC6 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&lcdvcc_en>;
+		pinctrl-0 = <&lcdvcc_en_gpio>;
 		regulator-always-on;
 		regulator-enable-ramp-delay = <100000>;
 		regulator-min-microvolt = <3300000>;
@@ -359,7 +359,7 @@
 		enable-active-high;
 		gpio = <&gpio4 RK_PD2 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&vcc5v0_host_en>;
+		pinctrl-0 = <&vcc5v0_host_en_gpio>;
 		regulator-always-on;
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
@@ -378,7 +378,7 @@
 		enable-active-high;
 		gpio = <&gpio1 RK_PA3 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&vcc5v0_typec0_en>;
+		pinctrl-0 = <&vcc5v0_typec0_en_gpio>;
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
 		regulator-name = "vbus_5vout";
@@ -514,7 +514,7 @@
 		interrupt-parent = <&gpio3>;
 		interrupts = <10 IRQ_TYPE_LEVEL_LOW>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&pmic_int_l>;
+		pinctrl-0 = <&pmic_int_l_gpio>;
 		rockchip,system-power-controller;
 		wakeup-source;
 
@@ -765,7 +765,7 @@
 		reg = <0x22>;
 		fcs,int_n = <&gpio1 RK_PA2 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&fusb0_int>;
+		pinctrl-0 = <&fusb0_int_gpio>;
 		status = "okay";
 		vbus-supply = <&vbus_typec>;
 
@@ -831,7 +831,7 @@
 	rockchip,i2s-broken-burst-len;
 	#sound-dai-cells = <0>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&i2s_8ch_mclk>, <&i2s1_2ch_bus>;
+	pinctrl-0 = <&i2s_8ch_mclk_gpio>, <&i2s1_2ch_bus>;
 	rockchip,playback-channels = <8>;
 	rockchip,capture-channels = <8>;
 	status = "okay";
@@ -864,10 +864,10 @@
 
 &pinctrl {
 	buttons {
-		pwrbtn: pwrbtn {
+		pwrbtn_gpio: pwrbtn-gpio {
 			rockchip,pins = <0 RK_PA5 RK_FUNC_GPIO &pcfg_pull_up>;
 		};
-		lidbtn: lidbtn {
+		lidbtn_gpio: lidbtn-gpio {
 			rockchip,pins = <1 RK_PA1 RK_FUNC_GPIO &pcfg_pull_up>;
 		};
 	};
@@ -878,38 +878,51 @@
 		};
 	};
 
+	es8316 {
+		hp_det_gpio: hp-det-gpio {
+			rockchip,pins =
+				<0 RK_PB0 RK_FUNC_GPIO &pcfg_pull_down>;
+		};
+	};
+
 	fusb302x {
-		fusb0_int: fusb0-int {
+		fusb0_int_gpio: fusb0-int-gpio {
 			rockchip,pins = <1 RK_PA2 RK_FUNC_GPIO &pcfg_pull_up>;
 		};
 	};
 
-	leds {
-		pwrled: pwrled {
-			rockchip,pins = <0 RK_PB3 RK_FUNC_GPIO &pcfg_pull_none>;
-		};
-
-		slpled: slpled {
-			rockchip,pins = <0 RK_PA2 RK_FUNC_GPIO &pcfg_pull_none>;
+	i2s1 {
+		i2s_8ch_mclk_gpio: i2s-8ch-mclk-gpio {
+			rockchip,pins = <4 0 RK_FUNC_1 &pcfg_pull_none>;
 		};
 	};
 
 	lcd-panel {
-		lcdvcc_en: lcdvcc-en {
+		lcdvcc_en_gpio: lcdvcc-en-gpio {
 			rockchip,pins = <1 RK_PC6 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 
-		panel_en: panel-en {
+		panel_en_gpio: panel-en-gpio {
 			rockchip,pins = <1 RK_PA0 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 
-		lcd_panel_reset: lcd-panel-reset {
+		lcd_panel_reset_gpio: lcd-panel-reset-gpio {
 			rockchip,pins = <4 RK_PD6 RK_FUNC_GPIO &pcfg_pull_up>;
 		};
 	};
 
+	leds {
+		pwrled_gpio: pwrled_gpio {
+			rockchip,pins = <0 RK_PB3 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+
+		slpled_gpio: slpled_gpio {
+			rockchip,pins = <0 RK_PA2 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+	};
+
 	pmic {
-		pmic_int_l: pmic-int-l {
+		pmic_int_l_gpio: pmic-int-l-gpio {
 			rockchip,pins = <3 RK_PB2 RK_FUNC_GPIO &pcfg_pull_up>;
 		};
 
@@ -922,61 +935,48 @@
 		};
 	};
 
-	sdio-pwrseq {
-		wifi_enable_h: wifi-enable-h {
-			rockchip,pins = <0 RK_PB2 RK_FUNC_GPIO &pcfg_pull_none>;
-		};
-	};
-
 	sdcard {
-		sdmmc0_pwr_h: sdmmc0-pwr-h {
+		sdmmc0_pwr_h_gpio: sdmmc0-pwr-h-gpio {
 			rockchip,pins = <0 RK_PA1 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 
 	};
 
+	sdio-pwrseq {
+		wifi_enable_h_gpio: wifi-enable-h-gpio {
+			rockchip,pins = <0 RK_PB2 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+	};
+
 	usb-typec {
-		vcc5v0_typec0_en: vcc5v0_typec0_en {
+		vcc5v0_typec0_en_gpio: vcc5v0-typec0-en-gpio {
 			rockchip,pins = <1 RK_PA3 RK_FUNC_GPIO &pcfg_pull_up>;
 		};
 	};
 
 	usb2 {
-		pwr_5v: pwr-5v {
+		pwr_5v_gpio: pwr-5v-gpio {
 			rockchip,pins = <1 RK_PB5 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 
-		vcc5v0_host_en: vcc5v0-host-en {
+		vcc5v0_host_en_gpio: vcc5v0-host-en-gpio {
 			rockchip,pins = <4 RK_PD2 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
 
-	i2s1 {
-		i2s_8ch_mclk: i2s-8ch-mclk {
-			rockchip,pins = <4 0 RK_FUNC_1 &pcfg_pull_none>;
-		};
-	};
-
 	wireless-bluetooth {
-		bt_wake_gpio: bt-wake {
+		bt_wake_gpio: bt-wake-gpio {
 			rockchip,pins =
 				<2 RK_PD3 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
-		bt_host_wake_gpio: bt-host-wake {
+		bt_host_wake_gpio: bt-host-wake-gpio {
 			rockchip,pins =
 				<0 RK_PA4 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 
-		bt_reset_gpio: bt-reset {
+		bt_reset_gpio: bt-reset-gpio {
 			rockchip,pins =
 				<0 RK_PB1 RK_FUNC_GPIO &pcfg_pull_none>;
-		};
-	};
-
-	es8316 {
-		hp_det_gpio: hp-det {
-			rockchip,pins =
-				<0 RK_PB0 RK_FUNC_GPIO &pcfg_pull_down>;
 		};
 	};
 };
