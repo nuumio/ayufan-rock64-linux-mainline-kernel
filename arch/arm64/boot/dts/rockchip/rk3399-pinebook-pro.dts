@@ -413,12 +413,6 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&dc_det_gpio>;
 	};
-
-	usb_charger: usb-charger {
-		status = "okay";
-		compatible = "universal-charger";
-		extcon = <&fusb0>;
-	};
 };
 
 &cluster1_opp {
