@@ -49,7 +49,8 @@
 	};
 
 	/* Use separate nodes for gpio-keys to allow for selective deactivation
-	   of wakeup sources without disabling the whole key */
+	 * of wakeup sources without disabling the whole key
+	 */
 	gpio-key-power {
 		compatible = "gpio-keys";
 		pinctrl-names = "default";
@@ -100,8 +101,8 @@
 		status = "okay";
 
 		ports {
-	                #address-cells = <0x01>;
-                        #size-cells = <0x00>;
+			#address-cells = <0x01>;
+			#size-cells = <0x00>;
 			port@0 {
 				panel_in_edp: endpoint@0 {
 					remote-endpoint = <&edp_out_panel>;
