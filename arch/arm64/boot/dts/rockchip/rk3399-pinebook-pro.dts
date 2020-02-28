@@ -771,8 +771,10 @@
 			label = "USB-C";
 			op-sink-microwatt = <1000000>;
 			power-role = "dual";
-			sink-pdos = <PDO_FIXED(5000, 2500, PDO_FIXED_USB_COMM)>;
-			source-pdos = <PDO_FIXED(5000, 1400, PDO_FIXED_USB_COMM)>;
+			sink-pdos =
+				<PDO_FIXED(5000, 2500, PDO_FIXED_USB_COMM)>;
+			source-pdos =
+				<PDO_FIXED(5000, 1400, PDO_FIXED_USB_COMM)>;
 			try-power-role = "sink";
 
 			extcon-cables = <1 2 5 6 9 10 12 44>;
@@ -784,19 +786,22 @@
 
 				port@0 {
 					usbc_hs: endpoint {
-						remote-endpoint = <&u2phy0_typec_hs>;
+						remote-endpoint =
+							<&u2phy0_typec_hs>;
 					};
 				};
 
 				port@1 {
 					usbc_ss: endpoint {
-						remote-endpoint = <&tcphy0_typec_ss>;
+						remote-endpoint =
+							<&tcphy0_typec_ss>;
 					};
 				};
 
 				port@2 {
 					usbc_dp: endpoint {
-						remote-endpoint = <&tcphy0_typec_dp>;
+						remote-endpoint =
+							<&tcphy0_typec_dp>;
 					};
 				};
 			};
