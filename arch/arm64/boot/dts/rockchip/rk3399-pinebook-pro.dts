@@ -23,69 +23,10 @@
 		stdout-path = "serial2:1500000n8";
 	};
 
-	leds {
-		compatible = "gpio-leds";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pwrled_gpio &slpled_gpio>;
-
-		green-led {
-			color = <LED_COLOR_ID_GREEN>;
-			default-state = "on";
-			function = LED_FUNCTION_POWER;
-			gpios = <&gpio0 RK_PB3 GPIO_ACTIVE_HIGH>;
-			label = "green:disk-activity";
-			linux,default-trigger = "mmc2-inverted";
-		};
-
-		red-led {
-			color = <LED_COLOR_ID_RED>;
-			default-state = "off";
-			function = LED_FUNCTION_STANDBY;
-			gpios = <&gpio0 RK_PA2 GPIO_ACTIVE_HIGH>;
-			label = "red:standby";
-			panic-indicator;
-			retain-state-suspended;
-		};
-	};
-
-	/*
-	 * Use separate nodes for gpio-keys to allow for selective deactivation
-	 * of wakeup sources without disabling the whole key
-	 */
-	gpio-key-power {
-		compatible = "gpio-keys";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pwrbtn_gpio>;
-
-		power {
-			debounce-interval = <20>;
-			gpios = <&gpio0 RK_PA5 GPIO_ACTIVE_LOW>;
-			label = "Power";
-			linux,code = <KEY_POWER>;
-			wakeup-source;
-		};
-	};
-
-	gpio-key-lid {
-		compatible = "gpio-keys";
-		pinctrl-names = "default";
-		pinctrl-0 = <&lidbtn_gpio>;
-
-		lid {
-			debounce-interval = <20>;
-			gpios = <&gpio1 RK_PA1 GPIO_ACTIVE_LOW>;
-			label = "Lid";
-			linux,code = <SW_LID>;
-			linux,input-type = <EV_SW>;
-			wakeup-event-action = <EV_ACT_DEASSERTED>;
-			wakeup-source;
-		};
-	};
-
-	/* first 128k(0xff8d0000~0xff8f0000) for ddr and ATF */
-	sram@ff8d0000 {
-		compatible = "mmio-sram";
-		reg = <0x0 0xff8d0000 0x0 0x20000>; /* 128k */
+	backlight: edp-backlight {
+		compatible = "pwm-backlight";
+		power-supply = <&vcc_12v>;
+		pwms = <&pwm0 0 740740 0>;
 	};
 
 	edp_panel: edp-panel {
@@ -109,34 +50,6 @@
 				};
 			};
 		};
-	};
-
-	backlight: edp-backlight {
-		compatible = "pwm-backlight";
-		power-supply = <&vcc_12v>;
-		pwms = <&pwm0 0 740740 0>;
-	};
-
-	/* Power sequence for SDIO WiFi module */
-	sdio_pwrseq: sdio-pwrseq {
-		compatible = "mmc-pwrseq-simple";
-		clocks = <&rk808 1>;
-		clock-names = "ext_clock";
-		pinctrl-names = "default";
-		pinctrl-0 = <&wifi_enable_h_gpio>;
-		post-power-on-delay-ms = <100>;
-		power-off-delay-us = <500000>;
-
-		/* WL_REG_ON on module */
-		reset-gpios = <&gpio0 RK_PB2 GPIO_ACTIVE_LOW>;
-	};
-
-	/* Audio components */
-	speaker_amp: speaker-amplifier {
-		compatible = "simple-audio-amplifier";
-		enable-gpios = <&gpio4 RK_PD3 GPIO_ACTIVE_HIGH>;
-		sound-name-prefix = "Speaker Amplifier";
-		VCC-supply = <&pa_5v>;
 	};
 
 	es8316-sound {
@@ -171,6 +84,94 @@
 		simple-audio-card,codec {
 			sound-dai = <&es8316>;
 		};
+	};
+
+	/*
+	 * Use separate nodes for gpio-keys to allow for selective deactivation
+	 * of wakeup sources via sysfs without disabling the whole key
+	 */
+	gpio-key-lid {
+		compatible = "gpio-keys";
+		pinctrl-names = "default";
+		pinctrl-0 = <&lidbtn_gpio>;
+
+		lid {
+			debounce-interval = <20>;
+			gpios = <&gpio1 RK_PA1 GPIO_ACTIVE_LOW>;
+			label = "Lid";
+			linux,code = <SW_LID>;
+			linux,input-type = <EV_SW>;
+			wakeup-event-action = <EV_ACT_DEASSERTED>;
+			wakeup-source;
+		};
+	};
+
+	gpio-key-power {
+		compatible = "gpio-keys";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pwrbtn_gpio>;
+
+		power {
+			debounce-interval = <20>;
+			gpios = <&gpio0 RK_PA5 GPIO_ACTIVE_LOW>;
+			label = "Power";
+			linux,code = <KEY_POWER>;
+			wakeup-source;
+		};
+	};
+
+
+	leds {
+		compatible = "gpio-leds";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pwrled_gpio &slpled_gpio>;
+
+		green-led {
+			color = <LED_COLOR_ID_GREEN>;
+			default-state = "on";
+			function = LED_FUNCTION_POWER;
+			gpios = <&gpio0 RK_PB3 GPIO_ACTIVE_HIGH>;
+			label = "green:disk-activity";
+			linux,default-trigger = "mmc2-inverted";
+		};
+
+		red-led {
+			color = <LED_COLOR_ID_RED>;
+			default-state = "off";
+			function = LED_FUNCTION_STANDBY;
+			gpios = <&gpio0 RK_PA2 GPIO_ACTIVE_HIGH>;
+			label = "red:standby";
+			panic-indicator;
+			retain-state-suspended;
+		};
+	};
+
+	/* Power sequence for SDIO WiFi module */
+	sdio_pwrseq: sdio-pwrseq {
+		compatible = "mmc-pwrseq-simple";
+		clocks = <&rk808 1>;
+		clock-names = "ext_clock";
+		pinctrl-names = "default";
+		pinctrl-0 = <&wifi_enable_h_gpio>;
+		post-power-on-delay-ms = <100>;
+		power-off-delay-us = <500000>;
+
+		/* WL_REG_ON on module */
+		reset-gpios = <&gpio0 RK_PB2 GPIO_ACTIVE_LOW>;
+	};
+
+	/* Audio components */
+	speaker_amp: speaker-amplifier {
+		compatible = "simple-audio-amplifier";
+		enable-gpios = <&gpio4 RK_PD3 GPIO_ACTIVE_HIGH>;
+		sound-name-prefix = "Speaker Amplifier";
+		VCC-supply = <&pa_5v>;
+	};
+
+	/* first 128k(0xff8d0000~0xff8f0000) for ddr and ATF */
+	sram@ff8d0000 {
+		compatible = "mmio-sram";
+		reg = <0x0 0xff8d0000 0x0 0x20000>; /* 128k */
 	};
 
 	/* Power tree */
