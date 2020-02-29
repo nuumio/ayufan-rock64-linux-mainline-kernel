@@ -30,20 +30,16 @@
 	};
 
 	edp_panel: edp-panel {
-		compatible = "boe,nv140fhmn49", "simple-panel";
+		compatible = "boe,nv140fhmn49";
 		backlight = <&backlight>;
-
-		enable-delay-ms = <20>;
 		enable-gpios = <&gpio1 RK_PA0 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&panel_en_gpio>;
-
 		power-supply = <&vcc3v3_panel>;
-		prepare-delay-ms = <20>;
 
 		ports {
-			#address-cells = <0x01>;
-			#size-cells = <0x00>;
+			#address-cells = <1>;
+			#size-cells = <0>;
 			port@0 {
 				panel_in_edp: endpoint@0 {
 					remote-endpoint = <&edp_out_panel>;
@@ -336,7 +332,7 @@
 		};
 	};
 
-	/* Regualtors supplied by vcc5v0_usb */
+	/* Regulators supplied by vcc5v0_usb */
 	/* Type C port power supply regulator */
 	vbus_5vout: vbus_typec: vbus-5vout {
 		compatible = "regulator-fixed";
@@ -354,7 +350,7 @@
 		};
 	};
 
-	/* Regualtors supplied by vcc_1v8 */
+	/* Regulators supplied by vcc_1v8 */
 	/* Primary 0.9 V LDO */
 	vcca0v9_s3: vcca0v9-s3 {
 		compatible = "regulator-fixed";
@@ -416,10 +412,10 @@
 };
 
 &edp {
-	status = "okay";
 	force-hpd;
 	pinctrl-names = "default";
 	pinctrl-0 = <&edp_hpd>;
+	status = "okay";
 
 	ports {
 		edp_out: port@1 {
@@ -679,11 +675,10 @@
 };
 
 &i2c1 {
-	i2c-scl-rising-time-ns = <168>;
-	i2c-scl-falling-time-ns = <4>;
-	status = "okay";
-
 	clock-frequency = <100000>;
+	i2c-scl-falling-time-ns = <4>;
+	i2c-scl-rising-time-ns = <168>;
+	status = "okay";
 
 	es8316: es8316@11 {
 		compatible = "everest,es8316";
@@ -695,14 +690,14 @@
 };
 
 &i2c3 {
-	i2c-scl-rising-time-ns = <450>;
 	i2c-scl-falling-time-ns = <15>;
+	i2c-scl-rising-time-ns = <450>;
 	status = "okay";
 };
 
 &i2c4 {
-	i2c-scl-rising-time-ns = <600>;
 	i2c-scl-falling-time-ns = <20>;
+	i2c-scl-rising-time-ns = <600>;
 	status = "okay";
 
 	fusb0: fusb30x@22 {
@@ -787,11 +782,10 @@
 };
 
 &io_domains {
-	status = "okay";
-
 	audio-supply = <&vcc_3v0>;
-	sdmmc-supply = <&vcc_sdio>;
 	gpio1830-supply = <&vcc_3v0>;
+	sdmmc-supply = <&vcc_sdio>;
+	status = "okay";
 };
 
 &pcie_phy {
@@ -805,10 +799,10 @@
 	num-lanes = <4>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pcie_clkreqn_cpm>;
-	status = "okay";
 	vpcie0v9-supply = <&vcca0v9_s3>;
 	vpcie1v8-supply = <&vcca1v8_s3>;
 	vpcie3v3-supply = <&vcc3v3_ssd>;
+	status = "okay";
 };
 
 &pinctrl {
@@ -829,8 +823,7 @@
 
 	es8316 {
 		hp_det_gpio: hp-det-gpio {
-			rockchip,pins =
-				<0 RK_PB0 RK_FUNC_GPIO &pcfg_pull_down>;
+			rockchip,pins = <0 RK_PB0 RK_FUNC_GPIO &pcfg_pull_down>;
 		};
 	};
 
@@ -842,7 +835,7 @@
 
 	i2s1 {
 		i2s_8ch_mclk_gpio: i2s-8ch-mclk-gpio {
-			rockchip,pins = <4 0 RK_FUNC_1 &pcfg_pull_none>;
+			rockchip,pins = <4 RK_PA0 1 &pcfg_pull_none>;
 		};
 	};
 
@@ -915,17 +908,14 @@
 
 	wireless-bluetooth {
 		bt_wake_gpio: bt-wake-gpio {
-			rockchip,pins =
-				<2 RK_PD3 RK_FUNC_GPIO &pcfg_pull_none>;
+			rockchip,pins = <2 RK_PD3 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 		bt_host_wake_gpio: bt-host-wake-gpio {
-			rockchip,pins =
-				<0 RK_PA4 RK_FUNC_GPIO &pcfg_pull_none>;
+			rockchip,pins = <0 RK_PA4 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 
 		bt_reset_gpio: bt-reset-gpio {
-			rockchip,pins =
-				<0 RK_PB1 RK_FUNC_GPIO &pcfg_pull_none>;
+			rockchip,pins = <0 RK_PB1 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
 };
@@ -977,7 +967,6 @@
 	cap-sd-highspeed;
 	cd-gpios = <&gpio0 RK_PA7 GPIO_ACTIVE_LOW>;
 	disable-wp;
-	max-frequency = <150000000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&sdmmc_clk &sdmmc_cmd &sdmmc_bus4>;
 	sd-uhs-sdr104;
@@ -988,7 +977,6 @@
 	bus-width = <4>;
 	cap-sd-highspeed;
 	cap-sdio-irq;
-	disable-wp;
 	keep-power-in-suspend;
 	mmc-pwrseq = <&sdio_pwrseq>;
 	non-removable;
@@ -1006,15 +994,13 @@
 };
 
 &spi1 {
-	status = "okay";
 	max-freq = <10000000>;
+	status = "okay";
 
-	spiflash: spi-flash@0 {
-		#address-cells = <0x1>;
-		#size-cells = <1>;
+	spiflash: flash@0 {
 		compatible = "jedec,spi-nor";
 		m25p,fast-read;
-		reg = <0x0>;
+		reg = <0>;
 		spi-max-frequency = <10000000>;
 		status = "okay";
 
@@ -1109,8 +1095,8 @@
 &uart0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart0_xfer &uart0_cts &uart0_rts>;
-	status = "okay";
 	uart-has-rtscts;
+	status = "okay";
 
 	bluetooth {
 		compatible = "brcm,bcm4345c5";
