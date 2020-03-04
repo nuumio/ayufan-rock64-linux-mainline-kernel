@@ -392,6 +392,14 @@
 	extcon = <&fusb0>;
 };
 
+&cpu_b0 {
+	cpu-supply = <&vdd_cpu_b>;
+};
+
+&cpu_b1 {
+	cpu-supply = <&vdd_cpu_b>;
+};
+
 &cpu_l0 {
 	cpu-supply = <&vdd_cpu_l>;
 };
@@ -406,14 +414,6 @@
 
 &cpu_l3 {
 	cpu-supply = <&vdd_cpu_l>;
-};
-
-&cpu_b0 {
-	cpu-supply = <&vdd_cpu_b>;
-};
-
-&cpu_b1 {
-	cpu-supply = <&vdd_cpu_b>;
 };
 
 &edp {
@@ -451,8 +451,8 @@
 
 &i2c0 {
 	clock-frequency = <400000>;
-	i2c-scl-rising-time-ns = <168>;
 	i2c-scl-falling-time-ns = <4>;
+	i2c-scl-rising-time-ns = <168>;
 	status = "okay";
 
 	rk808: pmic@1b {
@@ -787,8 +787,8 @@
 	#sound-dai-cells = <0>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&i2s_8ch_mclk_gpio>, <&i2s1_2ch_bus>;
-	rockchip,playback-channels = <8>;
 	rockchip,capture-channels = <8>;
+	rockchip,playback-channels = <8>;
 	status = "okay";
 };
 
@@ -1010,8 +1010,8 @@
 
 	spiflash: flash@0 {
 		compatible = "jedec,spi-nor";
-		m25p,fast-read;
 		reg = <0>;
+		m25p,fast-read;
 		spi-max-frequency = <10000000>;
 		status = "okay";
 
