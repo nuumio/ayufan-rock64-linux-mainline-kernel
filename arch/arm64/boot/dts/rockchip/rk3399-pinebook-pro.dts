@@ -41,7 +41,12 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			port@0 {
+				reg = <0>;
+				#address-cells = <1>;
+				#size-cells = <0>;
+
 				panel_in_edp: endpoint@0 {
+					reg = <0>;
 					remote-endpoint = <&edp_out_panel>;
 				};
 			};
@@ -728,6 +733,8 @@
 				#size-cells = <0>;
 
 				port@0 {
+					reg = <0>;
+
 					usbc_hs: endpoint {
 						remote-endpoint =
 							<&u2phy0_typec_hs>;
@@ -735,6 +742,8 @@
 				};
 
 				port@1 {
+					reg = <1>;
+
 					usbc_ss: endpoint {
 						remote-endpoint =
 							<&tcphy0_typec_ss>;
@@ -742,6 +751,8 @@
 				};
 
 				port@2 {
+					reg = <2>;
+
 					usbc_dp: endpoint {
 						remote-endpoint =
 							<&tcphy0_typec_dp>;
