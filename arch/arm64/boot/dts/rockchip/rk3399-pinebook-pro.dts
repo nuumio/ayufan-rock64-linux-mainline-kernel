@@ -711,7 +711,6 @@
 		fcs,int_n = <&gpio1 RK_PA2 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&fusb0_int_gpio>;
-		status = "okay";
 		vbus-supply = <&vbus_typec>;
 
 		connector {
@@ -1013,7 +1012,6 @@
 		reg = <0>;
 		m25p,fast-read;
 		spi-max-frequency = <10000000>;
-		status = "okay";
 
 		partitions {
 			compatible = "fixed-partitions";
