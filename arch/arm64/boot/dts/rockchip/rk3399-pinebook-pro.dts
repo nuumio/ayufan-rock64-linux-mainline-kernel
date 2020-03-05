@@ -40,6 +40,7 @@
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
+
 			port@0 {
 				reg = <0>;
 				#address-cells = <1>;
@@ -818,12 +819,12 @@
 
 &pinctrl {
 	buttons {
-		pwrbtn_gpio: pwrbtn-gpio {
-			rockchip,pins = <0 RK_PA5 RK_FUNC_GPIO &pcfg_pull_up>;
-		};
-
 		lidbtn_gpio: lidbtn-gpio {
 			rockchip,pins = <1 RK_PA1 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+
+		pwrbtn_gpio: pwrbtn-gpio {
+			rockchip,pins = <0 RK_PA5 RK_FUNC_GPIO &pcfg_pull_up>;
 		};
 	};
 
@@ -852,16 +853,16 @@
 	};
 
 	lcd-panel {
+		lcd_panel_reset_gpio: lcd-panel-reset-gpio {
+			rockchip,pins = <4 RK_PD6 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+
 		lcdvcc_en_gpio: lcdvcc-en-gpio {
 			rockchip,pins = <1 RK_PC6 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 
 		panel_en_gpio: panel-en-gpio {
 			rockchip,pins = <1 RK_PA0 RK_FUNC_GPIO &pcfg_pull_none>;
-		};
-
-		lcd_panel_reset_gpio: lcd-panel-reset-gpio {
-			rockchip,pins = <4 RK_PD6 RK_FUNC_GPIO &pcfg_pull_up>;
 		};
 	};
 
@@ -919,16 +920,16 @@
 	};
 
 	wireless-bluetooth {
-		bt_wake_gpio: bt-wake-gpio {
-			rockchip,pins = <2 RK_PD3 RK_FUNC_GPIO &pcfg_pull_none>;
-		};
-
 		bt_host_wake_gpio: bt-host-wake-gpio {
 			rockchip,pins = <0 RK_PA4 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 
 		bt_reset_gpio: bt-reset-gpio {
 			rockchip,pins = <0 RK_PB1 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+
+		bt_wake_gpio: bt-wake-gpio {
+			rockchip,pins = <2 RK_PD3 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
 };
