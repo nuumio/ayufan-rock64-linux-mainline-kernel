@@ -366,7 +366,7 @@ static int cw_get_voltage(struct cw_battery *cw_bat)
 	return voltage;
 }
 
-/*This function called when get RRT from cw2015*/
+/* This function called when get RRT from cw2015 */
 static int cw_get_time_to_empty(struct cw_battery *cw_bat)
 {
 	int ret;
