@@ -10,7 +10,6 @@ Required properties :
 Optional properties :
  - cellwise,monitor-interval : Measurement interval in seconds
  - cellwise,design-capacity : Design capacity of the battery cell in milliampere hours
- - cellwise,alert-level : Low battery alarm level in percent
 
 Example:
 	cw2015@62 {
@@ -28,7 +27,6 @@ Example:
 			0x2F 0x00 0x64 0xA5 0xB5 0x11 0xF0 0x11
 		>;
 		cellwise,monitor-interval = <5>;
-		cellwise,virtual-power;
 		cellwise,design-capacity = <9800>;
 		power-supplies = <&mains_charger>, <&usb_charger>;
 	}

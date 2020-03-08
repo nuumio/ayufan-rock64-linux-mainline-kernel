@@ -689,12 +689,6 @@ static int cw2015_parse_dt(struct cw_battery *cw_bat)
 		data->design_capacity = value;
 	}
 
-	of_property_read_u8(node, PREFIX"alert-level", &cw_bat->alert_level);
-	if (cw_bat->alert_level > 100) {
-		dev_err(dev, "invalid alert_level, clamping to 100 %%\n");
-		cw_bat->alert_level = 100;
-	}
-
 	return 0;
 }
 #else
