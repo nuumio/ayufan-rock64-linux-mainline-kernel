@@ -710,10 +710,11 @@ static int cw2015_parse_dt(struct cw_battery *cw_bat)
 			      CW2015_TIMER_MS_COUNTS;
 
 	ret = of_property_read_u32(node, PREFIX"monitor-interval", &value);
-	if (ret < 0)
-		dev_err(dev, "monitor-interval missing!\n");
-	else
+	if (ret >= 0) {
+		dev_dbg(dev, "Overriding default monitor-interval with %u s\n",
+			value);
 		cw_bat->monitor_sec = value * CW2015_TIMER_MS_COUNTS;
+	}
 
 	ret = of_property_read_u32(node, PREFIX"design-capacity", &value);
 	if (ret < 0) {
