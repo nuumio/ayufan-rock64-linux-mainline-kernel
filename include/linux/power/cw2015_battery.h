@@ -72,20 +72,6 @@
 #define CW2015_TIMER_MS_COUNTS			1000
 #define CW2015_DEFAULT_MONITOR_SEC		8
 
-/* virtual params */
-#define CW2015_VIRTUAL_CURRENT			1000
-#define CW2015_VIRTUAL_VOLTAGE			3888
-#define CW2015_VIRTUAL_SOC			66
-#define CW2015_VIRTUAL_PRESET			1
-#define CW2015_VIRTUAL_TEMPERATURE		188
-#define CW2015_VIRTUAL_TIME2EMPTY		60
-#define CW2015_VIRTUAL_STATUS			POWER_SUPPLY_STATUS_CHARGING
-
-enum bat_mode {
-	MODE_BATTERY = 0,
-	MODE_VIRTUAL,
-};
-
 struct cw_bat_platform_data {
 	u32 *cw_bat_config_info;
 	int design_capacity;
@@ -111,7 +97,6 @@ struct cw_battery {
 	int time_to_empty;
 	int alt;
 	u32 monitor_sec;
-	u32 bat_mode;
 	int bat_change;
 	int charge_count;
 	u8 alert_level;

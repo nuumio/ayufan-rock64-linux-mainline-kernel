@@ -469,8 +469,7 @@ static void cw_bat_work(struct work_struct *work)
 	/* Add for battery swap start */
 	ret = cw_read(cw_bat->client, CW2015_REG_MODE, &reg_val);
 	if (ret < 0) {
-		cw_bat->bat_mode = MODE_VIRTUAL;
-		cw_bat->bat_change = 1;
+		cw_err(cw_bat, "Failed to read mode from gauge: %d", ret);
 	} else {
 		if ((reg_val & CW2015_MODE_SLEEP_MASK) == CW2015_MODE_SLEEP) {
 			for (i = 0; i < 5; i++) {
@@ -522,13 +521,9 @@ static int cw_battery_get_property(struct power_supply *psy,
 	switch (psp) {
 	case POWER_SUPPLY_PROP_CAPACITY:
 		val->intval = cw_bat->capacity;
-		if (cw_bat->bat_mode == MODE_VIRTUAL)
-			val->intval = CW2015_VIRTUAL_SOC;
 		break;
 	case POWER_SUPPLY_PROP_STATUS:
 		val->intval = cw_bat->status;
-		if (cw_bat->bat_mode == MODE_VIRTUAL)
-			val->intval = CW2015_VIRTUAL_STATUS;
 		break;
 
 	case POWER_SUPPLY_PROP_HEALTH:
@@ -536,14 +531,10 @@ static int cw_battery_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_PRESENT:
 		val->intval = cw_bat->voltage <= 0 ? 0 : 1;
-		if (cw_bat->bat_mode == MODE_VIRTUAL)
-			val->intval = CW2015_VIRTUAL_PRESET;
 		break;
 
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 		val->intval = cw_bat->voltage * 1000;
-		if (cw_bat->bat_mode == MODE_VIRTUAL)
-			val->intval = CW2015_VIRTUAL_VOLTAGE * 1000;
 		break;
 
 	case POWER_SUPPLY_PROP_TIME_TO_EMPTY_NOW:
@@ -552,8 +543,6 @@ static int cw_battery_get_property(struct power_supply *psy,
 		} else {
 			val->intval = 0;
 		}
-		if (cw_bat->bat_mode == MODE_VIRTUAL)
-			val->intval = CW2015_VIRTUAL_TIME2EMPTY;
 		break;
 
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
@@ -570,7 +559,7 @@ static int cw_battery_get_property(struct power_supply *psy,
 		break;
 
 	case POWER_SUPPLY_PROP_TEMP:
-		val->intval = CW2015_VIRTUAL_TEMPERATURE;
+		val->intval = 188;
 		break;
 
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
@@ -585,8 +574,6 @@ static int cw_battery_get_property(struct power_supply *psy,
 			val->intval = 0;
 		}
 
-		if (cw_bat->bat_mode == MODE_VIRTUAL)
-			val->intval = CW2015_VIRTUAL_CURRENT;
 		break;
 
 	default:
@@ -655,14 +642,8 @@ static int cw2015_parse_dt(struct cw_battery *cw_bat)
 			return ret;
 	}
 
-	cw_bat->bat_mode = MODE_BATTERY;
 	cw_bat->monitor_sec = CW2015_DEFAULT_MONITOR_SEC *
 			      CW2015_TIMER_MS_COUNTS;
-
-	ret = of_property_read_u32(node, PREFIX"virtual-power", &value);
-	if (ret < 0)
-		value = 0;
-	cw_bat->bat_mode = value;
 
 	ret = of_property_read_u32(node, PREFIX"monitor-interval", &value);
 	if (ret < 0)
