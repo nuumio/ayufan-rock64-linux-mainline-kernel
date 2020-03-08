@@ -61,7 +61,7 @@
 #define CW2015_DEFAULT_MONITOR_SEC		8
 
 struct cw_bat_platform_data {
-	u32 *cw_bat_config_info;
+	u8 *cw_bat_config_info;
 	int design_capacity;
 };
 
@@ -97,26 +97,36 @@ struct cw_battery {
 #define cw_warn(cw_bat, ...) dev_warn(&(cw_bat)->client->dev, __VA_ARGS__)
 #define cw_err(cw_bat, ...) dev_err(&(cw_bat)->client->dev, __VA_ARGS__)
 
-static int cw_read(struct cw_battery *cw_bat, u8 reg, u8 buf[])
+static int cw_read(struct cw_battery *cw_bat, u8 reg, u8 *buf)
 {
 	return regmap_raw_read(cw_bat->regmap, reg, buf, 1);
 }
 
-static int cw_write(struct cw_battery *cw_bat, u8 reg, u8 const buf[])
+static int cw_write(struct cw_battery *cw_bat, u8 reg, u8 const *buf)
 {
 	return regmap_raw_write(cw_bat->regmap, reg, buf, 1);
 }
 
-static int cw_read_word(struct cw_battery *cw_bat, u8 reg, u8 buf[])
+static int cw_read_word(struct cw_battery *cw_bat, u8 reg, u8 *buf)
 {
 	return regmap_raw_read(cw_bat->regmap, reg, buf, 2);
+}
+
+static int cw_read_bulk(struct cw_battery *cw_bat, u8 reg, u8 *buf, size_t len)
+{
+	return regmap_raw_read(cw_bat->regmap, reg, buf, len);
+}
+
+static int cw_write_bulk(struct cw_battery *cw_bat, u8 reg, u8 const *buf,
+				size_t len)
+{
+	return regmap_raw_write(cw_bat->regmap, reg, buf, len);
 }
 
 int cw_update_config_info(struct cw_battery *cw_bat)
 {
 	int ret;
 	u8 reg_val;
-	u8 i;
 	u8 reset_val;
 
 	/* make sure no in sleep mode */
@@ -132,14 +142,12 @@ int cw_update_config_info(struct cw_battery *cw_bat)
 	}
 
 	/* update new battery info */
-	for (i = 0; i < CW2015_SIZE_BATINFO; i++) {
-		ret =
-		    cw_write(cw_bat, CW2015_REG_BATINFO + i,
-			     (u8 *)&cw_bat->plat_data.cw_bat_config_info[i]);
+	ret = cw_write_bulk(cw_bat, CW2015_REG_BATINFO,
+				cw_bat->plat_data.cw_bat_config_info,
+				CW2015_SIZE_BATINFO);
 
-		if (ret < 0)
-			return ret;
-	}
+	if (ret < 0)
+		return ret;
 
 	reg_val |= CW2015_CONFIG_UPDATE_FLG;	/* set UPDATE_FLAG */
 	reg_val &= ~CW2015_MASK_ATHD;	/* clear ATHD */
@@ -204,18 +212,15 @@ static int cw_init(struct cw_battery *cw_bat)
 			return ret;
 		}
 	} else {
-		for (i = 0; i < CW2015_SIZE_BATINFO; i++) {
-			ret = cw_read(cw_bat, (CW2015_REG_BATINFO + i),
-				      &reg_val);
-			if (ret < 0)
-				return ret;
+		u8 bat_info[CW2015_SIZE_BATINFO];
+		ret = cw_read_bulk(cw_bat, CW2015_REG_BATINFO, bat_info,
+					CW2015_SIZE_BATINFO);
+		if (ret < 0)
+			return ret;
 
-			if (cw_bat->plat_data.cw_bat_config_info[i] != reg_val)
-				break;
-		}
-
-		if (i != CW2015_SIZE_BATINFO) {
-			cw_warn(cw_bat, "Battery info read incomplete");
+		if (memcmp(bat_info, cw_bat->plat_data.cw_bat_config_info,
+				CW2015_SIZE_BATINFO)) {
+			cw_warn(cw_bat, "Replacing stored battery info");
 			ret = cw_update_config_info(cw_bat);
 			if (ret < 0)
 				return ret;
@@ -654,16 +659,14 @@ static int cw2015_parse_dt(struct cw_battery *cw_bat)
 	if (!prop)
 		return -EINVAL;
 
-	length /= sizeof(u32);
-
 	if (length > 0) {
-		size_t size = sizeof(*data->cw_bat_config_info) * length;
+		size_t size = length;
 
 		data->cw_bat_config_info = devm_kzalloc(dev, size, GFP_KERNEL);
 		if (!data->cw_bat_config_info)
 			return -ENOMEM;
 
-		ret = of_property_read_u32_array(node, PREFIX"bat-config-info",
+		ret = of_property_read_u8_array(node, PREFIX"bat-config-info",
 						 data->cw_bat_config_info,
 						 length);
 		if (ret < 0)
