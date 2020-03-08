@@ -742,7 +742,6 @@ static const struct regmap_access_table regmap_vol_table = {
 static const struct regmap_config cw2015_regmap_config = {
 	.reg_bits = 8,
 	.val_bits = 8,
-	.val_format_endian = REGMAP_ENDIAN_NATIVE,
 	.rd_table = &regmap_rd_table,
 	.wr_table = &regmap_wr_table,
 	.volatile_table = &regmap_vol_table,
