@@ -403,20 +403,14 @@ static int cw_get_voltage(struct cw_battery *cw_bat)
 static int cw_get_time_to_empty(struct cw_battery *cw_bat)
 {
 	int ret;
-	u8 reg_val;
+	u8 reg_val[2];
 	u16 value16;
 
-	ret = cw_read(cw_bat, CW2015_REG_RRT_ALERT, &reg_val);
+	ret = cw_read_word(cw_bat, CW2015_REG_RRT_ALERT, reg_val);
 	if (ret < 0)
 		return ret;
 
-	value16 = reg_val;
-
-	ret = cw_read(cw_bat, CW2015_REG_RRT_ALERT + 1, &reg_val);
-	if (ret < 0)
-		return ret;
-
-	value16 = ((value16 << 8) + reg_val) & CW2015_MASK_SOC;
+	value16 = ((reg_val[0] << 8) + reg_val[1]) & CW2015_MASK_SOC;
 	return value16;
 }
 
