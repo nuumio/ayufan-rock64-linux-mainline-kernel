@@ -24,18 +24,12 @@
 
 #include <linux/power/cw2015_battery.h>
 
-static int dbg_enable;
-module_param_named(dbg_level, dbg_enable, int, 0644);
-
-#define cw_printk(args...) \
-	do { \
-		if (dbg_enable) { \
-			pr_info(args); \
-		} \
-	} while (0)
-
-
 #define PREFIX "cellwise,"
+
+#define cw_dbg(cw_bat, ...) dev_dbg(&(cw_bat)->client->dev, __VA_ARGS__)
+#define cw_info(cw_bat, ...) dev_info(&(cw_bat)->client->dev, __VA_ARGS__)
+#define cw_warn(cw_bat, ...) dev_warn(&(cw_bat)->client->dev, __VA_ARGS__)
+#define cw_err(cw_bat, ...) dev_err(&(cw_bat)->client->dev, __VA_ARGS__)
 
 static int cw_read(struct i2c_client *client, u8 reg, u8 buf[])
 {
@@ -59,9 +53,6 @@ int cw_update_config_info(struct cw_battery *cw_bat)
 	u8 i;
 	u8 reset_val;
 
-	cw_printk("[FGADC] test config_info = 0x%x\n",
-		  cw_bat->plat_data.cw_bat_config_info[0]);
-
 	/* make sure no in sleep mode */
 	ret = cw_read(cw_bat->client, CW2015_REG_MODE, &reg_val);
 	if (ret < 0)
@@ -69,9 +60,9 @@ int cw_update_config_info(struct cw_battery *cw_bat)
 
 	reset_val = reg_val;
 	if ((reg_val & CW2015_MODE_SLEEP_MASK) == CW2015_MODE_SLEEP) {
-		dev_err(&cw_bat->client->dev,
-			"device in sleep mode, cannot update battery info\n");
-		return -1;
+		cw_err(cw_bat,
+			"device in sleep mode, can't update battery info\n");
+		return -EINVAL;
 	}
 
 	/* update new battery info */
@@ -103,7 +94,7 @@ int cw_update_config_info(struct cw_battery *cw_bat)
 	if (ret < 0)
 		return ret;
 
-	cw_printk("cw2015 update config success!\n");
+	cw_dbg(cw_bat, "battery config updated\n");
 
 	return 0;
 }
@@ -139,10 +130,10 @@ static int cw_init(struct cw_battery *cw_bat)
 		return ret;
 
 	if (!(reg_val & CW2015_CONFIG_UPDATE_FLG)) {
-		cw_printk("update config flg is true, need update config\n");
+		cw_dbg(cw_bat, "updating battery config");
 		ret = cw_update_config_info(cw_bat);
 		if (ret < 0) {
-			dev_info(&cw_bat->client->dev,
+			dev_err(&cw_bat->client->dev,
 				 "update flag for new battery info have not set\n");
 			return ret;
 		}
@@ -178,11 +169,11 @@ static int cw_init(struct cw_battery *cw_bat)
 	if (i >= CW2015_READ_TRIES) {
 		reg_val = CW2015_MODE_SLEEP;
 		ret = cw_write(cw_bat->client, CW2015_REG_MODE, &reg_val);
-		dev_info(&cw_bat->client->dev, "report battery capacity error");
+		cw_err(cw_bat, "Invalid state of charge indication");
 		return -1;
 	}
 
-	cw_printk("cw2015 init success!\n");
+	cw_dbg(cw_bat, "battery configured\n");
 	return 0;
 }
 
@@ -226,7 +217,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 	cw_capacity = reg_val[0];
 
 	if ((cw_capacity < 0) || (cw_capacity > 100)) {
-		cw_printk("Error:  cw_capacity = %d\n", cw_capacity);
+		cw_err(cw_bat, "Invalid SoC, SoC = %d %%", cw_capacity);
 		reset_loop++;
 		if (reset_loop >
 		    (CW2015_BATTERY_CAPACITY_ERROR / cw_bat->monitor_sec)) {
@@ -250,7 +241,6 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 	/* case 2 : aviod no charge full */
 	if ((cw_bat->charger_mode > 0) &&
 	    (cw_capacity >= 95) && (cw_capacity <= cw_bat->capacity)) {
-		cw_printk("Chaman join no charge full\n");
 		charging_loop++;
 		if (charging_loop >
 		    (CW2015_BATTERY_UP_MAX_CHANGE / cw_bat->monitor_sec)) {
@@ -267,7 +257,6 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 	if ((cw_bat->charger_mode == 0) &&
 	    (cw_capacity <= cw_bat->capacity) &&
 	    (cw_capacity >= 90) && (jump_flag == 1)) {
-		cw_printk("Chaman join no charge full discharging\n");
 #ifdef CONFIG_PM
 		if (cw_bat->suspend_resume_mark == 1) {
 			cw_bat->suspend_resume_mark = 0;
@@ -275,7 +264,8 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 				     discharging_loop *
 				     (cw_bat->monitor_sec / 1000)) /
 				     (CW2015_BATTERY_DOWN_MAX_CHANGE / 1000);
-			cw_printk("sleep_cap = %d\n", sleep_cap);
+			cw_dbg(cw_bat, "estimated capacity lost during sleep: %d",
+				sleep_cap);
 
 			if (cw_capacity >= cw_bat->capacity - sleep_cap) {
 				return cw_capacity;
@@ -286,8 +276,6 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 					(cw_bat->monitor_sec / 1000);
 			else
 				discharging_loop = 0;
-			cw_printk("discharging_loop = %d\n",
-				  discharging_loop);
 			return cw_bat->capacity - sleep_cap;
 		}
 #endif
@@ -373,8 +361,8 @@ static int cw_get_voltage(struct cw_battery *cw_bat)
 		voltage = voltage * (res1 + res2) / res2;
 	}
 
-	dev_dbg(&cw_bat->client->dev, "the cw201x voltage=%d,reg_val=%x %x\n",
-		voltage, reg_val[0], reg_val[1]);
+	cw_dbg(cw_bat, "read voltage: %d mV, reg_val=%x %x\n", voltage,
+		reg_val[0], reg_val[1]);
 	return voltage;
 }
 
@@ -422,6 +410,11 @@ static void cw_update_capacity(struct cw_battery *cw_bat)
 		cw_bat->capacity = cw_capacity;
 		cw_bat->bat_change = 1;
 	}
+	if (cw_capacity < 0)
+		cw_err(cw_bat, "Failed to get SoC from gauge: %d", cw_capacity);
+	if (cw_capacity > 100)
+		cw_err(cw_bat, "Got invalid SoC from gauge: %d %%",
+			cw_capacity);
 }
 
 static void cw_update_vol(struct cw_battery *cw_bat)
@@ -431,6 +424,9 @@ static void cw_update_vol(struct cw_battery *cw_bat)
 	ret = cw_get_voltage(cw_bat);
 	if ((ret >= 0) && (cw_bat->voltage != ret))
 		cw_bat->voltage = ret;
+	if (ret < 0)
+		cw_err(cw_bat, "Failed to get voltage from gauge: %d",
+			ret);
 }
 
 static void cw_update_status(struct cw_battery *cw_bat)
@@ -461,6 +457,9 @@ static void cw_update_time_to_empty(struct cw_battery *cw_bat)
 		cw_bat->time_to_empty = ret;
 		cw_bat->bat_change = 1;
 	}
+	if (ret < 0)
+		cw_err(cw_bat, "Failed to get time to empty from gauge: %d",
+			ret);
 }
 
 static void cw_bat_work(struct work_struct *work)
@@ -494,10 +493,10 @@ static void cw_bat_work(struct work_struct *work)
 		cw_update_time_to_empty(cw_bat);
 	}
 	/* Add for battery swap end */
-	cw_printk("charger_mod = %d\n", cw_bat->charger_mode);
-	cw_printk("status = %d\n", cw_bat->status);
-	cw_printk("capacity = %d\n", cw_bat->capacity);
-	cw_printk("voltage = %d\n", cw_bat->voltage);
+	cw_dbg(cw_bat, "charger_mode = %d", cw_bat->charger_mode);
+	cw_dbg(cw_bat, "status = %d", cw_bat->status);
+	cw_dbg(cw_bat, "capacity = %d", cw_bat->capacity);
+	cw_dbg(cw_bat, "voltage = %d", cw_bat->voltage);
 
 #ifdef CONFIG_PM
 	if (cw_bat->suspend_resume_mark == 1)
