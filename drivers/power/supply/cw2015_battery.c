@@ -705,10 +705,48 @@ static int cw2015_parse_dt(struct cw_battery *cw_bat)
 }
 #endif
 
+static const struct regmap_range regmap_ranges_rd_yes[] = {
+	regmap_reg_range(CW2015_REG_VERSION, CW2015_REG_VERSION),
+	regmap_reg_range(CW2015_REG_VCELL, CW2015_REG_CONFIG),
+	regmap_reg_range(CW2015_REG_MODE, CW2015_REG_MODE),
+	regmap_reg_range(CW2015_REG_BATINFO, CW2015_REG_BATINFO +
+				CW2015_SIZE_BATINFO - 1),
+};
+
+static const struct regmap_access_table regmap_rd_table = {
+	.yes_ranges = regmap_ranges_rd_yes,
+	.n_yes_ranges = 4,
+};
+
+static const struct regmap_range regmap_ranges_wr_yes[] = {
+	regmap_reg_range(CW2015_REG_RRT_ALERT, CW2015_REG_CONFIG),
+	regmap_reg_range(CW2015_REG_MODE, CW2015_REG_MODE),
+	regmap_reg_range(CW2015_REG_BATINFO, CW2015_REG_BATINFO +
+				CW2015_SIZE_BATINFO - 1),
+};
+
+static const struct regmap_access_table regmap_wr_table = {
+	.yes_ranges = regmap_ranges_wr_yes,
+	.n_yes_ranges = 3,
+};
+
+static const struct regmap_range regmap_ranges_vol_yes[] = {
+	regmap_reg_range(CW2015_REG_VCELL, CW2015_REG_SOC + 1),
+};
+
+static const struct regmap_access_table regmap_vol_table = {
+	.yes_ranges = regmap_ranges_vol_yes,
+	.n_yes_ranges = 1,
+};
+
 static const struct regmap_config cw2015_regmap_config = {
 	.reg_bits = 8,
 	.val_bits = 8,
 	.val_format_endian = REGMAP_ENDIAN_NATIVE,
+	.rd_table = &regmap_rd_table,
+	.wr_table = &regmap_wr_table,
+	.volatile_table = &regmap_vol_table,
+	.max_register = CW2015_REG_BATINFO + CW2015_SIZE_BATINFO - 1,
 };
 
 static int cw_bat_probe(struct i2c_client *client,
