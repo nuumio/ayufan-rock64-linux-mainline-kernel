@@ -21,6 +21,7 @@
 #include <linux/slab.h>
 #include <linux/timekeeping.h>
 #include <linux/workqueue.h>
+#include <linux/regmap.h>
 
 #define CW2015_SIZE_BATINFO    64
 
@@ -69,7 +70,7 @@ struct cw_battery {
 	struct workqueue_struct *battery_workqueue;
 	struct delayed_work battery_delay_work;
 	struct cw_bat_platform_data plat_data;
-
+	struct regmap *regmap;
 	struct power_supply *rk_bat;
 
 #ifdef CONFIG_PM
@@ -96,19 +97,19 @@ struct cw_battery {
 #define cw_warn(cw_bat, ...) dev_warn(&(cw_bat)->client->dev, __VA_ARGS__)
 #define cw_err(cw_bat, ...) dev_err(&(cw_bat)->client->dev, __VA_ARGS__)
 
-static int cw_read(struct i2c_client *client, u8 reg, u8 buf[])
+static int cw_read(struct cw_battery *cw_bat, u8 reg, u8 buf[])
 {
-	return i2c_smbus_read_i2c_block_data(client, reg, 1, buf);
+	return regmap_raw_read(cw_bat->regmap, reg, buf, 1);
 }
 
-static int cw_write(struct i2c_client *client, u8 reg, u8 const buf[])
+static int cw_write(struct cw_battery *cw_bat, u8 reg, u8 const buf[])
 {
-	return i2c_smbus_write_i2c_block_data(client, reg, 1, &buf[0]);
+	return regmap_raw_write(cw_bat->regmap, reg, buf, 1);
 }
 
-static int cw_read_word(struct i2c_client *client, u8 reg, u8 buf[])
+static int cw_read_word(struct cw_battery *cw_bat, u8 reg, u8 buf[])
 {
-	return i2c_smbus_read_i2c_block_data(client, reg, 2, buf);
+	return regmap_raw_read(cw_bat->regmap, reg, buf, 2);
 }
 
 int cw_update_config_info(struct cw_battery *cw_bat)
@@ -119,7 +120,7 @@ int cw_update_config_info(struct cw_battery *cw_bat)
 	u8 reset_val;
 
 	/* make sure no in sleep mode */
-	ret = cw_read(cw_bat->client, CW2015_REG_MODE, &reg_val);
+	ret = cw_read(cw_bat, CW2015_REG_MODE, &reg_val);
 	if (ret < 0)
 		return ret;
 
@@ -133,7 +134,7 @@ int cw_update_config_info(struct cw_battery *cw_bat)
 	/* update new battery info */
 	for (i = 0; i < CW2015_SIZE_BATINFO; i++) {
 		ret =
-		    cw_write(cw_bat->client, CW2015_REG_BATINFO + i,
+		    cw_write(cw_bat, CW2015_REG_BATINFO + i,
 			     (u8 *)&cw_bat->plat_data.cw_bat_config_info[i]);
 
 		if (ret < 0)
@@ -143,19 +144,19 @@ int cw_update_config_info(struct cw_battery *cw_bat)
 	reg_val |= CW2015_CONFIG_UPDATE_FLG;	/* set UPDATE_FLAG */
 	reg_val &= ~CW2015_MASK_ATHD;	/* clear ATHD */
 	reg_val |= CW2015_ATHD(cw_bat->alert_level);	/* set CW2015_ATHD */
-	ret = cw_write(cw_bat->client, CW2015_REG_CONFIG, &reg_val);
+	ret = cw_write(cw_bat, CW2015_REG_CONFIG, &reg_val);
 	if (ret < 0)
 		return ret;
 
 	/* reset */
 	reset_val &= ~(CW2015_MODE_RESTART);
 	reg_val = reset_val | CW2015_MODE_RESTART;
-	ret = cw_write(cw_bat->client, CW2015_REG_MODE, &reg_val);
+	ret = cw_write(cw_bat, CW2015_REG_MODE, &reg_val);
 	if (ret < 0)
 		return ret;
 
 	msleep(10);
-	ret = cw_write(cw_bat->client, CW2015_REG_MODE, &reset_val);
+	ret = cw_write(cw_bat, CW2015_REG_MODE, &reset_val);
 	if (ret < 0)
 		return ret;
 
@@ -172,12 +173,12 @@ static int cw_init(struct cw_battery *cw_bat)
 
 	if ((reg_val & CW2015_MODE_SLEEP_MASK) == CW2015_MODE_SLEEP) {
 		reg_val = CW2015_MODE_NORMAL;
-		ret = cw_write(cw_bat->client, CW2015_REG_MODE, &reg_val);
+		ret = cw_write(cw_bat, CW2015_REG_MODE, &reg_val);
 		if (ret < 0)
 			return ret;
 	}
 
-	ret = cw_read(cw_bat->client, CW2015_REG_CONFIG, &reg_val);
+	ret = cw_read(cw_bat, CW2015_REG_CONFIG, &reg_val);
 	if (ret < 0)
 		return ret;
 
@@ -185,12 +186,12 @@ static int cw_init(struct cw_battery *cw_bat)
 		dev_info(&cw_bat->client->dev, "the new CW2015_ATHD have not set\n");
 		reg_val &= ~CW2015_MASK_ATHD;
 		reg_val |= ~CW2015_ATHD(cw_bat->alert_level);
-		ret = cw_write(cw_bat->client, CW2015_REG_CONFIG, &reg_val);
+		ret = cw_write(cw_bat, CW2015_REG_CONFIG, &reg_val);
 		if (ret < 0)
 			return ret;
 	}
 
-	ret = cw_read(cw_bat->client, CW2015_REG_CONFIG, &reg_val);
+	ret = cw_read(cw_bat, CW2015_REG_CONFIG, &reg_val);
 	if (ret < 0)
 		return ret;
 
@@ -204,7 +205,7 @@ static int cw_init(struct cw_battery *cw_bat)
 		}
 	} else {
 		for (i = 0; i < CW2015_SIZE_BATINFO; i++) {
-			ret = cw_read(cw_bat->client, (CW2015_REG_BATINFO + i),
+			ret = cw_read(cw_bat, (CW2015_REG_BATINFO + i),
 				      &reg_val);
 			if (ret < 0)
 				return ret;
@@ -223,7 +224,7 @@ static int cw_init(struct cw_battery *cw_bat)
 	}
 
 	for (i = 0; i < CW2015_READ_TRIES; i++) {
-		ret = cw_read(cw_bat->client, CW2015_REG_SOC, &reg_val);
+		ret = cw_read(cw_bat, CW2015_REG_SOC, &reg_val);
 		if (ret < 0)
 			return ret;
 		else if (reg_val <= 100) // SOC can't be more than 100 %
@@ -233,7 +234,7 @@ static int cw_init(struct cw_battery *cw_bat)
 
 	if (i >= CW2015_READ_TRIES) {
 		reg_val = CW2015_MODE_SLEEP;
-		ret = cw_write(cw_bat->client, CW2015_REG_MODE, &reg_val);
+		ret = cw_write(cw_bat, CW2015_REG_MODE, &reg_val);
 		cw_err(cw_bat, "Invalid state of charge indication");
 		return -1;
 	}
@@ -248,12 +249,12 @@ static int cw_por(struct cw_battery *cw_bat)
 	unsigned char reset_val;
 
 	reset_val = CW2015_MODE_SLEEP;
-	ret = cw_write(cw_bat->client, CW2015_REG_MODE, &reset_val);
+	ret = cw_write(cw_bat, CW2015_REG_MODE, &reset_val);
 	if (ret < 0)
 		return ret;
 	reset_val = CW2015_MODE_NORMAL;
 	msleep(20);
-	ret = cw_write(cw_bat->client, CW2015_REG_MODE, &reset_val);
+	ret = cw_write(cw_bat, CW2015_REG_MODE, &reset_val);
 	if (ret < 0)
 		return ret;
 	ret = cw_init(cw_bat);
@@ -275,7 +276,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 	static int charging_5_loop;
 	int sleep_cap;
 
-	ret = cw_read_word(cw_bat->client, CW2015_REG_SOC, reg_val);
+	ret = cw_read_word(cw_bat, CW2015_REG_SOC, reg_val);
 	if (ret < 0)
 		return ret;
 
@@ -383,17 +384,17 @@ static int cw_get_voltage(struct cw_battery *cw_bat)
 	u16 value16, value16_1, value16_2, value16_3;
 	int voltage;
 
-	ret = cw_read_word(cw_bat->client, CW2015_REG_VCELL, reg_val);
+	ret = cw_read_word(cw_bat, CW2015_REG_VCELL, reg_val);
 	if (ret < 0)
 		return ret;
 	value16 = (reg_val[0] << 8) + reg_val[1];
 
-	ret = cw_read_word(cw_bat->client, CW2015_REG_VCELL, reg_val);
+	ret = cw_read_word(cw_bat, CW2015_REG_VCELL, reg_val);
 	if (ret < 0)
 		return ret;
 	value16_1 = (reg_val[0] << 8) + reg_val[1];
 
-	ret = cw_read_word(cw_bat->client, CW2015_REG_VCELL, reg_val);
+	ret = cw_read_word(cw_bat, CW2015_REG_VCELL, reg_val);
 	if (ret < 0)
 		return ret;
 	value16_2 = (reg_val[0] << 8) + reg_val[1];
@@ -430,13 +431,13 @@ static int cw_get_time_to_empty(struct cw_battery *cw_bat)
 	u8 reg_val;
 	u16 value16;
 
-	ret = cw_read(cw_bat->client, CW2015_REG_RRT_ALERT, &reg_val);
+	ret = cw_read(cw_bat, CW2015_REG_RRT_ALERT, &reg_val);
 	if (ret < 0)
 		return ret;
 
 	value16 = reg_val;
 
-	ret = cw_read(cw_bat->client, CW2015_REG_RRT_ALERT + 1, &reg_val);
+	ret = cw_read(cw_bat, CW2015_REG_RRT_ALERT + 1, &reg_val);
 	if (ret < 0)
 		return ret;
 
@@ -536,7 +537,7 @@ static void cw_bat_work(struct work_struct *work)
 		container_of(delay_work, struct cw_battery, battery_delay_work);
 
 	/* Add for battery swap start */
-	ret = cw_read(cw_bat->client, CW2015_REG_MODE, &reg_val);
+	ret = cw_read(cw_bat, CW2015_REG_MODE, &reg_val);
 	if (ret < 0) {
 		cw_err(cw_bat, "Failed to read mode from gauge: %d", ret);
 	} else {
@@ -739,6 +740,12 @@ static int cw2015_parse_dt(struct cw_battery *cw_bat)
 }
 #endif
 
+static const struct regmap_config cw2015_regmap_config = {
+	.reg_bits = 8,
+	.val_bits = 8,
+	.val_format_endian = REGMAP_ENDIAN_NATIVE,
+};
+
 static int cw_bat_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -767,6 +774,13 @@ static int cw_bat_probe(struct i2c_client *client,
 	cw_bat->suspend_resume_mark = 0;
 	cw_bat->charger_mode = 0;
 	cw_bat->bat_change = 0;
+
+	cw_bat->regmap = devm_regmap_init_i2c(client, &cw2015_regmap_config);
+	if (IS_ERR(cw_bat->regmap)) {
+		cw_err(cw_bat, "Failed to allocate regmap: %ld",
+			PTR_ERR(cw_bat->regmap));
+		return PTR_ERR(cw_bat->regmap);
+	}
 
 	ret = cw_init(cw_bat);
 	if (ret) {
