@@ -379,45 +379,20 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 
 static int cw_get_voltage(struct cw_battery *cw_bat)
 {
-	int ret;
+	int ret, i;
 	u8 reg_val[2];
-	u16 value16, value16_1, value16_2, value16_3;
+	u32 avg = 0;
 	int voltage;
 
-	ret = cw_read_word(cw_bat, CW2015_REG_VCELL, reg_val);
-	if (ret < 0)
-		return ret;
-	value16 = (reg_val[0] << 8) + reg_val[1];
-
-	ret = cw_read_word(cw_bat, CW2015_REG_VCELL, reg_val);
-	if (ret < 0)
-		return ret;
-	value16_1 = (reg_val[0] << 8) + reg_val[1];
-
-	ret = cw_read_word(cw_bat, CW2015_REG_VCELL, reg_val);
-	if (ret < 0)
-		return ret;
-	value16_2 = (reg_val[0] << 8) + reg_val[1];
-
-	if (value16 > value16_1) {
-		value16_3 = value16;
-		value16 = value16_1;
-		value16_1 = value16_3;
+	for(i = 0; i < 3; i++) {
+		ret = cw_read_word(cw_bat, CW2015_REG_VCELL, reg_val);
+		if (ret < 0)
+			return ret;
+		avg += (reg_val[0] << 8) + reg_val[1];
 	}
+	avg /= 3;
 
-	if (value16_1 > value16_2) {
-		value16_3 = value16_1;
-		value16_1 = value16_2;
-		value16_2 = value16_3;
-	}
-
-	if (value16 > value16_1) {
-		value16_3 = value16;
-		value16 = value16_1;
-		value16_1 = value16_3;
-	}
-
-	voltage = value16_1 * 312 / 1024;
+	voltage = avg * 312 / 1024;
 
 	cw_dbg(cw_bat, "read voltage: %d mV, reg_val=%x %x\n", voltage,
 		reg_val[0], reg_val[1]);
