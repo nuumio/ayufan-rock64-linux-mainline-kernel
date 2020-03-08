@@ -853,19 +853,9 @@ static struct i2c_driver cw_bat_driver = {
 	.id_table = cw_bat_id_table,
 };
 
-static int __init cw_bat_init(void)
-{
-	return i2c_add_driver(&cw_bat_driver);
-}
-
-static void __exit cw_bat_exit(void)
-{
-	i2c_del_driver(&cw_bat_driver);
-}
-
-module_init(cw_bat_init);
-module_exit(cw_bat_exit);
+module_i2c_driver(cw_bat_driver);
 
 MODULE_AUTHOR("xhc<xhc@rock-chips.com>");
+MODULE_AUTHOR("Tobias Schramm <t.schramm@manjaro.org>");
 MODULE_DESCRIPTION("cw2015/cw2013 battery driver");
 MODULE_LICENSE("GPL");
