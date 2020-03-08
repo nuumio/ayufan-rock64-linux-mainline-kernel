@@ -559,13 +559,11 @@ static int cw_battery_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CAPACITY:
 		val->intval = cw_bat->capacity;
 		break;
+
 	case POWER_SUPPLY_PROP_STATUS:
 		val->intval = cw_bat->status;
 		break;
 
-	case POWER_SUPPLY_PROP_HEALTH:
-		val->intval = POWER_SUPPLY_HEALTH_GOOD;
-		break;
 	case POWER_SUPPLY_PROP_PRESENT:
 		val->intval = cw_bat->voltage <= 0 ? 0 : 1;
 		break;
@@ -618,7 +616,6 @@ static int cw_battery_get_property(struct power_supply *psy,
 static enum power_supply_property cw_battery_properties[] = {
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_STATUS,
-	POWER_SUPPLY_PROP_HEALTH,
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_TIME_TO_EMPTY_NOW,
