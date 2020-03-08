@@ -156,7 +156,7 @@
 			"Speaker", "Speaker Amplifier OUTL",
 			"Speaker", "Speaker Amplifier OUTR";
 
-		simple-audio-card,hp-det-gpio = <&gpio0 RK_PB0 GPIO_ACTIVE_HIGH>;
+		simple-audio-card,hp-det-gpio = <&gpio0 RK_PB0 GPIO_ACTIVE_LOW>;
 		simple-audio-card,aux-devs = <&speaker_amp>;
 		simple-audio-card,pin-switches = "Speaker";
 
@@ -716,7 +716,7 @@
 
 		connector {
 			compatible = "usb-c-connector";
-			data-role = "host";
+			data-role = "device";
 			label = "USB-C";
 			op-sink-microwatt = <1000000>;
 			power-role = "dual";
@@ -766,7 +766,7 @@
 	cw2015@62 {
 		compatible = "cellwise,cw201x";
 		reg = <0x62>;
-		cellwise,bat-config-info = <
+		cellwise,bat-config-info = /bits/ 8 <
 			0x17 0x67 0x80 0x73 0x6E 0x6C 0x6B 0x63
 			0x77 0x51 0x5C 0x58 0x50 0x4C 0x48 0x36
 			0x15 0x0C 0x0C 0x19 0x5B 0x7D 0x6F 0x69
@@ -836,7 +836,7 @@
 
 	es8316 {
 		hp_det_gpio: hp-det-gpio {
-			rockchip,pins = <0 RK_PB0 RK_FUNC_GPIO &pcfg_pull_up>;
+			rockchip,pins = <0 RK_PB0 RK_FUNC_GPIO &pcfg_pull_down>;
 		};
 	};
 
@@ -1132,7 +1132,7 @@
 };
 
 &usbdrd_dwc3_0 {
-	dr_mode = "host";
+	dr_mode = "peripheral";
 	status = "okay";
 };
 
