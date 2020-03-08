@@ -91,19 +91,6 @@ int cw_update_config_info(struct cw_battery *cw_bat)
 	if (ret < 0)
 		return ret;
 
-	/* check 2015/cw2013 for CW2015_ATHD & update_flag */
-	ret = cw_read(cw_bat->client, CW2015_REG_CONFIG, &reg_val);
-	if (ret < 0)
-		return ret;
-
-	if (!(reg_val & CW2015_CONFIG_UPDATE_FLG)) {
-		dev_info(&cw_bat->client->dev,
-			 "update flag for new battery info have not set..\n");
-	}
-
-	if ((reg_val & CW2015_MASK_ATHD) != CW2015_ATHD(cw_bat->alert_level))
-		dev_info(&cw_bat->client->dev, "the new CW2015_ATHD have not set..\n");
-
 	/* reset */
 	reset_val &= ~(CW2015_MODE_RESTART);
 	reg_val = reset_val | CW2015_MODE_RESTART;
@@ -197,83 +184,6 @@ static int cw_init(struct cw_battery *cw_bat)
 
 	cw_printk("cw2015 init success!\n");
 	return 0;
-}
-
-static int check_charger_online(struct device *dev, void *data)
-{
-	struct device *cw_dev = data;
-	struct power_supply *supply = dev_get_drvdata(dev);
-	union power_supply_propval val;
-
-	if (supply->desc->type == POWER_SUPPLY_TYPE_BATTERY) {
-		dev_dbg(cw_dev, "Skipping power supply %s since it is a battery\n",
-			dev_name(dev));
-		return 0; // Bail out, not a charger
-	}
-	if (!supply->desc->get_property(supply, POWER_SUPPLY_PROP_ONLINE,
-					&val)) {
-		return val.intval;
-	}
-	dev_dbg(cw_dev, "Skipping power supply %s since it does not "
-		"have an online property\n", dev_name(dev));
-	return 0;
-}
-
-#ifdef CONFIG_OF
-static int device_parent_match_of_node(struct device *dev, const void *np)
-{
-	while (dev) {
-		if (dev->of_node == np) {
-			return 1;
-		}
-		dev = dev->parent;
-	}
-	return 0;
-}
-#endif
-
-static int get_charge_state(struct cw_battery *cw_bat)
-{
-#ifdef CONFIG_OF
-	int i = 0, online = 0;
-	struct device_node *supply_of;
-	struct device *cw_dev = &cw_bat->client->dev;
-
-	if (!cw_dev->of_node) {
-		dev_dbg(cw_dev, "Charger does not have an of node, scanning "
-			"all supplies\n");
-#endif
-		return !!class_for_each_device(power_supply_class, NULL,
-					       cw_dev, check_charger_online);
-#ifdef CONFIG_OF
-	}
-	do {
-		struct device *supply_dev;
-
-		dev_dbg(cw_dev, "Scanning linked supplies of %s\n",
-			cw_dev->of_node->name);
-		supply_of = of_parse_phandle(cw_dev->of_node, "power-supplies",
-					     i++);
-		if (!supply_of) {
-			dev_dbg(cw_dev, "Got empty of node, scan done\n");
-			break;
-		}
-		dev_dbg(cw_dev, "Got power supply %s\n", supply_of->name);
-		supply_dev = class_find_device(power_supply_class, NULL,
-					       supply_of,
-					       device_parent_match_of_node);
-		if (supply_dev) {
-			online = check_charger_online(supply_dev, NULL);
-			dev_dbg(supply_dev, "Charger online: %d\n", online);
-			put_device(supply_dev);
-		} else {
-			dev_warn(cw_dev, "Failed to get device for device "
-				 "node %s\n", supply_of->name);
-		}
-		of_node_put(supply_of);
-	} while (!online);
-	return online;
-#endif
 }
 
 static int cw_por(struct cw_battery *cw_bat)
@@ -493,7 +403,7 @@ static void cw_update_charge_status(struct cw_battery *cw_bat)
 {
 	int cw_charger_mode;
 
-	cw_charger_mode = get_charge_state(cw_bat);
+	cw_charger_mode = power_supply_am_i_supplied(cw_bat->rk_bat);
 	if (cw_bat->charger_mode != cw_charger_mode) {
 		cw_bat->charger_mode = cw_charger_mode;
 		cw_bat->bat_change = 1;
@@ -857,6 +767,7 @@ static int cw_bat_probe(struct i2c_client *client,
 	}
 
 	psy_cfg.drv_data = cw_bat;
+	psy_cfg.of_node = client->dev.of_node;
 
 	cw_bat->rk_bat = devm_power_supply_register(&client->dev,
 		&cw2015_bat_desc, &psy_cfg);
