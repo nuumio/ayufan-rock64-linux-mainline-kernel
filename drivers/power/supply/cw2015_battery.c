@@ -183,7 +183,7 @@ static int cw_init(struct cw_battery *cw_bat)
 		return ret;
 
 	if ((reg_val & CW2015_MASK_ATHD) != CW2015_ATHD(cw_bat->alert_level)) {
-		dev_info(&cw_bat->client->dev, "the new CW2015_ATHD have not set\n");
+		cw_err(cw_bat, "Failed to set new alert level");
 		reg_val &= ~CW2015_MASK_ATHD;
 		reg_val |= ~CW2015_ATHD(cw_bat->alert_level);
 		ret = cw_write(cw_bat, CW2015_REG_CONFIG, &reg_val);
@@ -199,8 +199,8 @@ static int cw_init(struct cw_battery *cw_bat)
 		cw_dbg(cw_bat, "updating battery config");
 		ret = cw_update_config_info(cw_bat);
 		if (ret < 0) {
-			dev_err(&cw_bat->client->dev,
-				 "update flag for new battery info have not set\n");
+			cw_err(cw_bat,
+				 "Failed to upload battery info\n");
 			return ret;
 		}
 	} else {
@@ -215,8 +215,7 @@ static int cw_init(struct cw_battery *cw_bat)
 		}
 
 		if (i != CW2015_SIZE_BATINFO) {
-			dev_info(&cw_bat->client->dev,
-				 "update flag for new battery info have not set\n");
+			cw_warn(cw_bat, "Battery info read incomplete");
 			ret = cw_update_config_info(cw_bat);
 			if (ret < 0)
 				return ret;
@@ -676,18 +675,17 @@ static int cw2015_parse_dt(struct cw_battery *cw_bat)
 
 	ret = of_property_read_u32(node, PREFIX"monitor-interval", &value);
 	if (ret >= 0) {
-		dev_dbg(dev, "Overriding default monitor-interval with %u s\n",
+		cw_dbg(cw_bat, "Overriding default monitor-interval with %u s",
 			value);
 		cw_bat->monitor_sec = value * CW2015_TIMER_MS_COUNTS;
 	}
 
 	ret = of_property_read_u32(node, PREFIX"design-capacity", &value);
 	if (ret < 0) {
-		dev_err(dev, "design-capacity missing!\n");
-		data->design_capacity = 2000;
-	} else {
-		data->design_capacity = value;
+		cw_err(cw_bat, "design-capacity missing!");
+		return -EINVAL;
 	}
+	data->design_capacity = value;
 
 	return 0;
 }
@@ -721,8 +719,7 @@ static int cw_bat_probe(struct i2c_client *client,
 
 	ret = cw2015_parse_dt(cw_bat);
 	if (ret < 0) {
-		dev_err(&client->dev,
-			"failed to find cw2015 platform data\n");
+		cw_err(cw_bat, "failed to parse cw2015 dt data");
 		return ret;
 	}
 
@@ -742,7 +739,7 @@ static int cw_bat_probe(struct i2c_client *client,
 
 	ret = cw_init(cw_bat);
 	if (ret) {
-		pr_err("%s cw_init error\n", __func__);
+		cw_err(cw_bat, "Init failed: %d", ret);
 		return ret;
 	}
 
@@ -752,8 +749,7 @@ static int cw_bat_probe(struct i2c_client *client,
 	cw_bat->rk_bat = devm_power_supply_register(&client->dev,
 		&cw2015_bat_desc, &psy_cfg);
 	if (IS_ERR(cw_bat->rk_bat)) {
-		dev_err(&cw_bat->client->dev,
-			"power supply register rk_bat error\n");
+		cw_err(cw_bat, "Failed to register power supply");
 		return -1;
 	}
 
@@ -762,8 +758,7 @@ static int cw_bat_probe(struct i2c_client *client,
 	queue_delayed_work(cw_bat->battery_workqueue,
 			   &cw_bat->battery_delay_work, msecs_to_jiffies(10));
 
-	dev_info(&cw_bat->client->dev,
-		 "cw2015/cw2013 driver probe success\n");
+	cw_dbg(cw_bat, "cw2015/cw2013 driver probe success");
 	return 0;
 }
 
@@ -802,7 +797,7 @@ static int cw_bat_remove(struct i2c_client *client)
 {
 	struct cw_battery *cw_bat = i2c_get_clientdata(client);
 
-	dev_dbg(&cw_bat->client->dev, "%s\n", __func__);
+	cw_dbg(cw_bat, "Removing device");
 	cancel_delayed_work(&cw_bat->battery_delay_work);
 	return 0;
 }
