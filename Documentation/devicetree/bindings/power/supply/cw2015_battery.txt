@@ -9,8 +9,6 @@ Required properties :
 
 Optional properties :
  - cellwise,monitor-interval : Measurement interval in seconds
- - cellwise,voltage-divider : Voltage divider for multi-cell packs,
-   specified as two integer values <high side>, <low side> in ohms.
  - cellwise,virtual-power : Default to disconnected battery state (gauge in pack mode)
  - cellwise,design-capacity : Design capacity of the battery cell in milliampere hours
  - cellwise,alert-level : Low battery alarm level in percent

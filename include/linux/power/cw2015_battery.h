@@ -87,8 +87,6 @@ enum bat_mode {
 };
 
 struct cw_bat_platform_data {
-	u32 divider_high;
-	u32 divider_low;
 	u32 *cw_bat_config_info;
 	int design_capacity;
 };
