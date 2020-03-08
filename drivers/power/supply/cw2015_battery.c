@@ -505,7 +505,6 @@ static void cw_bat_work(struct work_struct *work)
 	cw_bat =
 		container_of(delay_work, struct cw_battery, battery_delay_work);
 
-	/* Add for battery swap start */
 	ret = cw_read(cw_bat, CW2015_REG_MODE, &reg_val);
 	if (ret < 0) {
 		cw_err(cw_bat, "Failed to read mode from gauge: %d", ret);
@@ -522,7 +521,6 @@ static void cw_bat_work(struct work_struct *work)
 		cw_update_status(cw_bat);
 		cw_update_time_to_empty(cw_bat);
 	}
-	/* Add for battery swap end */
 	cw_dbg(cw_bat, "charger_mode = %d", cw_bat->charger_mode);
 	cw_dbg(cw_bat, "status = %d", cw_bat->status);
 	cw_dbg(cw_bat, "capacity = %d", cw_bat->capacity);
