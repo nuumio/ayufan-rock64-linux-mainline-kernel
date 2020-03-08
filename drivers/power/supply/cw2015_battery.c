@@ -3,7 +3,7 @@
  * Fuel gauge driver for CellWise 2013 / 2015
  *
  * Copyright (C) 2012, RockChip
- * Copyright (C) 2019, Tobias Schramm
+ * Copyright (C) 2020, Tobias Schramm
  *
  * Authors: xuhuicong <xhc@rock-chips.com>
  * Authors: Tobias Schramm <tobias@t-sys.eu>
@@ -22,7 +22,72 @@
 #include <linux/timekeeping.h>
 #include <linux/workqueue.h>
 
-#include <linux/power/cw2015_battery.h>
+#define CW2015_SIZE_BATINFO    64
+
+#define CW2015_READ_TRIES 30
+
+#define CW2015_REG_VERSION             0x0
+#define CW2015_REG_VCELL               0x2
+#define CW2015_REG_SOC                 0x4
+#define CW2015_REG_RRT_ALERT           0x6
+#define CW2015_REG_CONFIG              0x8
+#define CW2015_REG_MODE                0xA
+#define CW2015_REG_BATINFO             0x10
+
+#define CW2015_MODE_SLEEP_MASK         (0x3<<6)
+#define CW2015_MODE_SLEEP              (0x3<<6)
+#define CW2015_MODE_NORMAL             (0x0<<6)
+#define CW2015_MODE_QUICK_START        (0x3<<4)
+#define CW2015_MODE_RESTART            (0xf<<0)
+
+#define CW2015_CONFIG_UPDATE_FLG       (0x01<<1)
+#define CW2015_ATHD(x)                 ((x)<<3)
+#define CW2015_MASK_ATHD               (0x1f<<3)
+#define CW2015_MASK_SOC                (0x1fff)
+
+#define CW2015_BATTERY_UP_MAX_CHANGE		(420 * 1000)
+#define CW2015_BATTERY_DOWN_MAX_CHANGE		(120 * 1000)
+#define CW2015_BATTERY_DOWN_CHANGE		60
+#define CW2015_BATTERY_DOWN_MIN_CHANGE_RUN	30
+#define CW2015_BATTERY_DOWN_MIN_CHANGE_SLEEP	1800
+#define CW2015_BATTERY_JUMP_TO_ZERO		(30 * 1000)
+#define CW2015_BATTERY_CAPACITY_ERROR		(40 * 1000)
+#define CW2015_BATTERY_CHARGING_ZERO		(1800 * 1000)
+
+#define CW2015_NO_CHARGING		0
+
+#define CW2015_TIMER_MS_COUNTS			1000
+#define CW2015_DEFAULT_MONITOR_SEC		8
+
+struct cw_bat_platform_data {
+	u32 *cw_bat_config_info;
+	int design_capacity;
+};
+
+struct cw_battery {
+	struct i2c_client *client;
+	struct workqueue_struct *battery_workqueue;
+	struct delayed_work battery_delay_work;
+	struct cw_bat_platform_data plat_data;
+
+	struct power_supply *rk_bat;
+
+#ifdef CONFIG_PM
+	struct timespec64 suspend_time_before;
+	struct timespec64 after;
+	int suspend_resume_mark;
+#endif
+	int charger_mode;
+	int capacity;
+	int voltage;
+	int status;
+	int time_to_empty;
+	int alt;
+	u32 monitor_sec;
+	int bat_change;
+	int charge_count;
+	u8 alert_level;
+};
 
 #define PREFIX "cellwise,"
 
@@ -384,7 +449,11 @@ static void cw_update_charge_status(struct cw_battery *cw_bat)
 	int cw_charger_mode;
 
 	cw_charger_mode = power_supply_am_i_supplied(cw_bat->rk_bat);
-	if (cw_bat->charger_mode != cw_charger_mode) {
+	if (cw_charger_mode < 0) {
+		cw_warn(cw_bat, "Failed to get supply state: %d",
+				cw_charger_mode);
+	}
+	else if (cw_bat->charger_mode != cw_charger_mode) {
 		cw_bat->charger_mode = cw_charger_mode;
 		cw_bat->bat_change = 1;
 		if (cw_charger_mode)
@@ -695,7 +764,7 @@ static int cw_bat_probe(struct i2c_client *client,
 	cw_bat->voltage = 0;
 	cw_bat->status = 0;
 	cw_bat->suspend_resume_mark = 0;
-	cw_bat->charger_mode = CW2015_NO_CHARGING;
+	cw_bat->charger_mode = 0;
 	cw_bat->bat_change = 0;
 
 	ret = cw_init(cw_bat);
