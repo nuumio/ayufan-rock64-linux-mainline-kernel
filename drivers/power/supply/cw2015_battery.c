@@ -55,8 +55,7 @@
 #define CW2015_BATTERY_CAPACITY_ERROR		(40 * 1000)
 #define CW2015_BATTERY_CHARGING_ZERO		(1800 * 1000)
 
-#define CW2015_TIMER_MS_COUNTS			1000
-#define CW2015_DEFAULT_MONITOR_SEC		8
+#define CW2015_DEFAULT_MONITOR_MS		8000
 
 struct cw_bat_platform_data {
 	u8 *cw_bat_config_info;
@@ -697,14 +696,13 @@ static int cw2015_parse_dt(struct cw_battery *cw_bat)
 		cw_warn(cw_bat, "No bat-config-info found, rolling with "
 				"current flash contents");
 
-	cw_bat->monitor_sec = CW2015_DEFAULT_MONITOR_SEC *
-			      CW2015_TIMER_MS_COUNTS;
+	cw_bat->monitor_sec = CW2015_DEFAULT_MONITOR_MS;
 
-	ret = of_property_read_u32(node, PREFIX"monitor-interval", &value);
+	ret = of_property_read_u32(node, PREFIX"monitor-interval-ms", &value);
 	if (ret >= 0) {
-		cw_dbg(cw_bat, "Overriding default monitor-interval with %u s",
+		cw_dbg(cw_bat, "Overriding default monitor-interval with %u ms",
 			value);
-		cw_bat->monitor_sec = value * CW2015_TIMER_MS_COUNTS;
+		cw_bat->monitor_sec = value;
 	}
 
 	ret = of_property_read_u32(node, PREFIX"design-capacity", &value);
