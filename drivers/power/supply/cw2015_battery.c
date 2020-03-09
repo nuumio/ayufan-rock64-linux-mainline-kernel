@@ -60,18 +60,14 @@
 
 #define CW2015_AVERAGING_SAMPLES		3
 
-struct cw_bat_platform_data {
-	u8 *cw_bat_config_info;
-};
-
 struct cw_battery {
 	struct i2c_client *client;
 	struct workqueue_struct *battery_workqueue;
 	struct delayed_work battery_delay_work;
-	struct cw_bat_platform_data plat_data;
 	struct regmap *regmap;
 	struct power_supply *rk_bat;
 	struct power_supply_battery_info battery;
+	u8 *bat_config_info;
 
 #ifdef CONFIG_PM
 	struct timespec64 suspend_time_before;
@@ -139,7 +135,7 @@ int cw_update_config_info(struct cw_battery *cw_bat)
 	u8 reg_val;
 	u8 reset_val;
 
-	if (!cw_bat->plat_data.cw_bat_config_info) {
+	if (!cw_bat->bat_config_info) {
 		cw_err(cw_bat,
 			"No battery config info provided, can't update flash contents");
 		return -EINVAL;
@@ -159,7 +155,7 @@ int cw_update_config_info(struct cw_battery *cw_bat)
 
 	/* write new battery info */
 	ret = cw_write_bulk(cw_bat, CW2015_REG_BATINFO,
-				cw_bat->plat_data.cw_bat_config_info,
+				cw_bat->bat_config_info,
 				CW2015_SIZE_BATINFO);
 
 	if (ret < 0)
@@ -222,7 +218,7 @@ static int cw_init(struct cw_battery *cw_bat)
 	if (!(reg_val & CW2015_CONFIG_UPDATE_FLG)) {
 		cw_dbg(cw_bat,
 			"Battery config not present, uploading battery config");
-		if (cw_bat->plat_data.cw_bat_config_info) {
+		if (cw_bat->bat_config_info) {
 			ret = cw_update_config_info(cw_bat);
 			if (ret < 0) {
 				cw_err(cw_bat,
@@ -233,7 +229,7 @@ static int cw_init(struct cw_battery *cw_bat)
 			cw_warn(cw_bat,
 				"Have no battery config for uploading, continuing without config");
 		}
-	} else if (cw_bat->plat_data.cw_bat_config_info) {
+	} else if (cw_bat->bat_config_info) {
 		u8 bat_info[CW2015_SIZE_BATINFO];
 
 		ret = cw_read_bulk(cw_bat, CW2015_REG_BATINFO, bat_info,
@@ -241,7 +237,7 @@ static int cw_init(struct cw_battery *cw_bat)
 		if (ret < 0)
 			return ret;
 
-		if (memcmp(bat_info, cw_bat->plat_data.cw_bat_config_info,
+		if (memcmp(bat_info, cw_bat->bat_config_info,
 				CW2015_SIZE_BATINFO)) {
 			cw_warn(cw_bat, "Replacing stored battery info");
 			ret = cw_update_config_info(cw_bat);
@@ -668,12 +664,9 @@ static int cw2015_parse_dt(struct cw_battery *cw_bat)
 	int length;
 	u32 value;
 	int ret;
-	struct cw_bat_platform_data *data = &cw_bat->plat_data;
 
 	if (!node)
 		return -ENODEV;
-
-	memset(data, 0, sizeof(*data));
 
 	prop = of_find_property(node, PREFIX"bat-config-info", &length);
 	if (prop) {
@@ -683,16 +676,16 @@ static int cw2015_parse_dt(struct cw_battery *cw_bat)
 			return -EINVAL;
 		}
 
-		data->cw_bat_config_info =
+		cw_bat->bat_config_info =
 			devm_kzalloc(dev, CW2015_SIZE_BATINFO, GFP_KERNEL);
-		if (!data->cw_bat_config_info) {
+		if (!cw_bat->bat_config_info) {
 			cw_err(cw_bat,
 				"Failed to allocate memory for battery config info");
 			return -ENOMEM;
 		}
 
 		ret = of_property_read_u8_array(node, PREFIX"bat-config-info",
-						 data->cw_bat_config_info,
+						 cw_bat->bat_config_info,
 						 CW2015_SIZE_BATINFO);
 		if (ret < 0)
 			return ret;
