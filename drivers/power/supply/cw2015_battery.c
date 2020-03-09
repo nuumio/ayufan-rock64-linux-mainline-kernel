@@ -219,7 +219,7 @@ static int cw_init(struct cw_battery *cw_bat)
 	if (!(reg_val & CW2015_CONFIG_UPDATE_FLG)) {
 		cw_dbg(cw_bat, "Battery config not present, uploading battery "
 				"config");
-		if(cw_bat->plat_data.cw_bat_config_info) {
+		if (cw_bat->plat_data.cw_bat_config_info) {
 			ret = cw_update_config_info(cw_bat);
 			if (ret < 0) {
 				cw_err(cw_bat,
@@ -230,7 +230,7 @@ static int cw_init(struct cw_battery *cw_bat)
 			cw_warn(cw_bat, "Have no battery config for uploading, "
 					"continuing without battery config");
 		}
-	} else if(cw_bat->plat_data.cw_bat_config_info) {
+	} else if (cw_bat->plat_data.cw_bat_config_info) {
 		u8 bat_info[CW2015_SIZE_BATINFO];
 		ret = cw_read_bulk(cw_bat, CW2015_REG_BATINFO, bat_info,
 					CW2015_SIZE_BATINFO);
