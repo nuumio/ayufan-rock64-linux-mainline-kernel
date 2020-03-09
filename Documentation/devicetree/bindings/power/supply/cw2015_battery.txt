@@ -5,11 +5,11 @@ The cellwise CW2015 is a shuntless single/multi-cell battery fuel gauge.
 
 Required properties :
  - compatible : "cellwise,cw2015"
- - cellwise,bat-config-info : Binary battery info blob
+ - cellwise,design-capacity : Design capacity of the battery cell in milliampere hours
 
 Optional properties :
+ - cellwise,bat-config-info : Binary battery info blob
  - cellwise,monitor-interval : Measurement interval in seconds
- - cellwise,design-capacity : Design capacity of the battery cell in milliampere hours
 
 Example:
 	cw2015@62 {
