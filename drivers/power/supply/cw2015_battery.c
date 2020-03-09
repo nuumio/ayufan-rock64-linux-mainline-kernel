@@ -204,7 +204,7 @@ static int cw_init(struct cw_battery *cw_bat)
 		return ret;
 
 	if ((reg_val & CW2015_MASK_ATHD) != CW2015_ATHD(cw_bat->alert_level)) {
-		cw_err(cw_bat, "Failed to set new alert level");
+		cw_dbg(cw_bat, "Setting new alert level");
 		reg_val &= ~CW2015_MASK_ATHD;
 		reg_val |= ~CW2015_ATHD(cw_bat->alert_level);
 		ret = cw_write(cw_bat, CW2015_REG_CONFIG, reg_val);
@@ -457,16 +457,15 @@ static void cw_update_capacity(struct cw_battery *cw_bat)
 	int cw_capacity;
 
 	cw_capacity = cw_get_capacity(cw_bat);
-	if ((cw_capacity >= 0) && (cw_capacity <= 100) &&
-	    (cw_bat->capacity != cw_capacity)) {
+	if (cw_capacity < 0)
+		cw_err(cw_bat, "Failed to get SoC from gauge: %d", cw_capacity);
+	else if (cw_capacity > 100)
+		cw_err(cw_bat, "Got invalid SoC from gauge: %d %%",
+			cw_capacity);
+	else if (cw_bat->capacity != cw_capacity) {
 		cw_bat->capacity = cw_capacity;
 		cw_bat->bat_change = 1;
 	}
-	if (cw_capacity < 0)
-		cw_err(cw_bat, "Failed to get SoC from gauge: %d", cw_capacity);
-	if (cw_capacity > 100)
-		cw_err(cw_bat, "Got invalid SoC from gauge: %d %%",
-			cw_capacity);
 }
 
 static void cw_update_vol(struct cw_battery *cw_bat)
@@ -474,11 +473,11 @@ static void cw_update_vol(struct cw_battery *cw_bat)
 	int ret;
 
 	ret = cw_get_voltage(cw_bat);
-	if ((ret >= 0) && (cw_bat->voltage != ret))
-		cw_bat->voltage = ret;
 	if (ret < 0)
 		cw_err(cw_bat, "Failed to get voltage from gauge: %d",
 			ret);
+	else if (cw_bat->voltage != ret)
+		cw_bat->voltage = ret;
 }
 
 static void cw_update_status(struct cw_battery *cw_bat)
@@ -505,13 +504,13 @@ static void cw_update_time_to_empty(struct cw_battery *cw_bat)
 	int ret;
 
 	ret = cw_get_time_to_empty(cw_bat);
-	if ((ret >= 0) && (cw_bat->time_to_empty != ret)) {
-		cw_bat->time_to_empty = ret;
-		cw_bat->bat_change = 1;
-	}
 	if (ret < 0)
 		cw_err(cw_bat, "Failed to get time to empty from gauge: %d",
 			ret);
+	else if (cw_bat->time_to_empty != ret) {
+		cw_bat->time_to_empty = ret;
+		cw_bat->bat_change = 1;
+	}
 }
 
 static void cw_bat_work(struct work_struct *work)
