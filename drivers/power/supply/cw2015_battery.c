@@ -826,7 +826,7 @@ static int cw_bat_suspend(struct device *dev)
 	struct cw_battery *cw_bat = i2c_get_clientdata(client);
 
 	ktime_get_boottime_ts64(&cw_bat->suspend_time_before);
-	cancel_delayed_work(&cw_bat->battery_delay_work);
+	cancel_delayed_work_sync(&cw_bat->battery_delay_work);
 	return 0;
 }
 
