@@ -140,8 +140,8 @@ int cw_update_config_info(struct cw_battery *cw_bat)
 	u8 reset_val;
 
 	if (!cw_bat->plat_data.cw_bat_config_info) {
-		cw_err(cw_bat, "No battery config info provided, can't "
-				"update flash contents");
+		cw_err(cw_bat,
+			"No battery config info provided, can't update flash contents");
 		return -EINVAL;
 	}
 
@@ -179,7 +179,7 @@ int cw_update_config_info(struct cw_battery *cw_bat)
 	if (ret < 0)
 		return ret;
 
-	msleep(10);
+	msleep(20);
 	ret = cw_write(cw_bat, CW2015_REG_MODE, reset_val);
 	if (ret < 0)
 		return ret;
@@ -220,8 +220,8 @@ static int cw_init(struct cw_battery *cw_bat)
 		return ret;
 
 	if (!(reg_val & CW2015_CONFIG_UPDATE_FLG)) {
-		cw_dbg(cw_bat, "Battery config not present, uploading battery "
-				"config");
+		cw_dbg(cw_bat,
+			"Battery config not present, uploading battery config");
 		if (cw_bat->plat_data.cw_bat_config_info) {
 			ret = cw_update_config_info(cw_bat);
 			if (ret < 0) {
@@ -230,11 +230,12 @@ static int cw_init(struct cw_battery *cw_bat)
 				return ret;
 			}
 		} else {
-			cw_warn(cw_bat, "Have no battery config for uploading, "
-					"continuing without battery config");
+			cw_warn(cw_bat,
+				"Have no battery config for uploading, continuing without config");
 		}
 	} else if (cw_bat->plat_data.cw_bat_config_info) {
 		u8 bat_info[CW2015_SIZE_BATINFO];
+
 		ret = cw_read_bulk(cw_bat, CW2015_REG_BATINFO, bat_info,
 					CW2015_SIZE_BATINFO);
 		if (ret < 0)
@@ -248,8 +249,7 @@ static int cw_init(struct cw_battery *cw_bat)
 				return ret;
 		}
 	} else
-		cw_warn(cw_bat, "Can't check current battery config, no config "
-				"provided");
+		cw_warn(cw_bat, "Can't check current battery config, no config provided");
 
 	for (i = 0; i < CW2015_READ_TRIES; i++) {
 		ret = cw_read(cw_bat, CW2015_REG_SOC, &reg_val);
@@ -361,9 +361,9 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 			cw_dbg(cw_bat, "Estimated capacity lost during sleep: %d",
 				sleep_cap);
 
-			if (cw_capacity >= cw_bat->capacity - sleep_cap) {
+			if (cw_capacity >= cw_bat->capacity - sleep_cap)
 				return cw_capacity;
-			}
+
 			if (!sleep_cap)
 				discharging_loop = discharging_loop +
 					1 + cw_bat->after.tv_sec /
@@ -446,8 +446,7 @@ static void cw_update_charge_status(struct cw_battery *cw_bat)
 	if (cw_charger_mode < 0) {
 		cw_warn(cw_bat, "Failed to get supply state: %d",
 				cw_charger_mode);
-	}
-	else if (cw_bat->charger_mode != cw_charger_mode) {
+	} else if (cw_bat->charger_mode != cw_charger_mode) {
 		cw_bat->charger_mode = cw_charger_mode;
 		cw_bat->bat_change = 1;
 		if (cw_charger_mode)
@@ -596,11 +595,10 @@ static int cw_battery_get_property(struct power_supply *psy,
 		break;
 
 	case POWER_SUPPLY_PROP_TIME_TO_EMPTY_NOW:
-		if (cw_battery_valid_time_to_empty(cw_bat)) {
+		if (cw_battery_valid_time_to_empty(cw_bat))
 			val->intval = cw_bat->time_to_empty;
-		} else {
+		else
 			val->intval = 0;
-		}
 		break;
 
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
@@ -688,8 +686,8 @@ static int cw2015_parse_dt(struct cw_battery *cw_bat)
 		data->cw_bat_config_info =
 			devm_kzalloc(dev, CW2015_SIZE_BATINFO, GFP_KERNEL);
 		if (!data->cw_bat_config_info) {
-			cw_err(cw_bat, "Failed to allocate memory for battery "
-					"config info");
+			cw_err(cw_bat,
+				"Failed to allocate memory for battery config info");
 			return -ENOMEM;
 		}
 
@@ -699,8 +697,8 @@ static int cw2015_parse_dt(struct cw_battery *cw_bat)
 		if (ret < 0)
 			return ret;
 	} else
-		cw_warn(cw_bat, "No bat-config-info found, rolling with "
-				"current flash contents");
+		cw_warn(cw_bat,
+			"No bat-config-info found, rolling with current flash contents");
 
 	cw_bat->monitor_sec = CW2015_DEFAULT_MONITOR_MS;
 
@@ -771,9 +769,8 @@ static int cw_bat_probe(struct i2c_client *client,
 	struct power_supply_config psy_cfg = {0};
 
 	cw_bat = devm_kzalloc(&client->dev, sizeof(*cw_bat), GFP_KERNEL);
-	if (!cw_bat) {
+	if (!cw_bat)
 		return -ENOMEM;
-	}
 
 	i2c_set_clientdata(client, cw_bat);
 	cw_bat->client = client;
@@ -816,8 +813,8 @@ static int cw_bat_probe(struct i2c_client *client,
 
 	ret = power_supply_get_battery_info(cw_bat->rk_bat, &cw_bat->battery);
 	if (ret) {
-		cw_warn(cw_bat, "No battery linked, some properties will be "
-				"missing");
+		cw_warn(cw_bat,
+			"No monitored battery, some properties will be missing");
 	}
 
 	cw_bat->battery_workqueue = create_singlethread_workqueue("rk_battery");
