@@ -264,7 +264,7 @@ static int cw_init(struct cw_battery *cw_bat)
 		reg_val = CW2015_MODE_SLEEP;
 		ret = cw_write(cw_bat, CW2015_REG_MODE, reg_val);
 		cw_err(cw_bat, "Invalid state of charge indication");
-		return -1;
+		return -EIO;
 	}
 
 	cw_dbg(cw_bat, "Battery configured");
