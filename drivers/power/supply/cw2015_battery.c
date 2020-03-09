@@ -151,7 +151,7 @@ int cw_update_config_info(struct cw_battery *cw_bat)
 	reset_val = reg_val;
 	if ((reg_val & CW2015_MODE_SLEEP_MASK) == CW2015_MODE_SLEEP) {
 		cw_err(cw_bat,
-			"device in sleep mode, can't update battery info\n");
+			"Device is in sleep mode, can't update battery info");
 		return -EINVAL;
 	}
 
@@ -182,7 +182,7 @@ int cw_update_config_info(struct cw_battery *cw_bat)
 	if (ret < 0)
 		return ret;
 
-	cw_dbg(cw_bat, "battery config updated\n");
+	cw_dbg(cw_bat, "Battery config updated");
 
 	return 0;
 }
@@ -265,7 +265,7 @@ static int cw_init(struct cw_battery *cw_bat)
 		return -1;
 	}
 
-	cw_dbg(cw_bat, "battery configured\n");
+	cw_dbg(cw_bat, "Battery configured");
 	return 0;
 }
 
@@ -356,7 +356,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 				     discharging_loop *
 				     (cw_bat->monitor_sec / 1000)) /
 				     (CW2015_BATTERY_DOWN_MAX_CHANGE / 1000);
-			cw_dbg(cw_bat, "estimated capacity lost during sleep: %d",
+			cw_dbg(cw_bat, "Estimated capacity lost during sleep: %d",
 				sleep_cap);
 
 			if (cw_capacity >= cw_bat->capacity - sleep_cap) {
@@ -420,7 +420,7 @@ static int cw_get_voltage(struct cw_battery *cw_bat)
 
 	voltage = avg * 312 / 1024;
 
-	cw_dbg(cw_bat, "read voltage: %d mV, raw=0x%04x\n", voltage, reg_val);
+	cw_dbg(cw_bat, "Read voltage: %d mV, raw=0x%04x\n", voltage, reg_val);
 	return voltage;
 }
 
@@ -709,7 +709,7 @@ static int cw2015_parse_dt(struct cw_battery *cw_bat)
 
 	ret = of_property_read_u32(node, PREFIX"design-capacity", &value);
 	if (ret < 0) {
-		cw_err(cw_bat, "design-capacity missing!");
+		cw_err(cw_bat, "design-capacity missing");
 		return -EINVAL;
 	}
 	data->design_capacity = value;
@@ -783,7 +783,7 @@ static int cw_bat_probe(struct i2c_client *client,
 
 	ret = cw2015_parse_dt(cw_bat);
 	if (ret < 0) {
-		cw_err(cw_bat, "failed to parse cw2015 dt data");
+		cw_err(cw_bat, "Failed to parse cw2015 dt data");
 		return ret;
 	}
 
