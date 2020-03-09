@@ -13,7 +13,7 @@ description: |
   The driver can utilize information from a simple-battery linked via a
   phandle in monitored-battery. If specified the driver uses the
   charge-full-design-microamp-hours property of the battery.
-  
+
   The contents of the byte array in cellwise,bat-config-info describes
   characteristics of the battery used. The format of this binary blob
   is not publicly descibed and currently unknown.
@@ -62,7 +62,7 @@ examples:
     i2c {
         #address-cells = <1>;
         #size-cells = <0>;
-  
+
         cw2015@62 {
             compatible = "cellwise,cw201x";
             reg = <0x62>;
