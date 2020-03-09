@@ -873,7 +873,7 @@ MODULE_DEVICE_TABLE(of, cw2015_of_match);
 
 static struct i2c_driver cw_bat_driver = {
 	.driver = {
-		.name = PREFIX"cw201x",
+		.name = "cw2015",
 #ifdef CONFIG_PM
 		.pm = &cw_bat_pm_ops,
 #endif
