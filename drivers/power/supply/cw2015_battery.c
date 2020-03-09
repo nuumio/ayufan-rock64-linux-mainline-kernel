@@ -406,7 +406,7 @@ static int cw_get_voltage(struct cw_battery *cw_bat)
 
 	voltage = avg * 312 / 1024;
 
-	cw_dbg(cw_bat, "read voltage: %d mV, raw=%04x\n", voltage, reg_val);
+	cw_dbg(cw_bat, "read voltage: %d mV, raw=0x%04x\n", voltage, reg_val);
 	return voltage;
 }
 
