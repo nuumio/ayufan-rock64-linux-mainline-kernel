@@ -869,15 +869,11 @@ static int cw_bat_remove(struct i2c_client *client)
 }
 
 static const struct i2c_device_id cw_bat_id_table[] = {
-	{ "cw201x", 0 },
-	{ "cw2013", 0 },
 	{ "cw2015", 0 },
 	{}
 };
 
 static const struct of_device_id cw2015_of_match[] = {
-	{ .compatible = PREFIX"cw201x" },
-	{ .compatible = PREFIX"cw2013" },
 	{ .compatible = PREFIX"cw2015" },
 	{ },
 };
