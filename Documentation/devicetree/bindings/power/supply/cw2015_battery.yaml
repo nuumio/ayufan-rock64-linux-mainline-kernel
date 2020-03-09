@@ -27,29 +27,31 @@ properties:
       - description: i2c address
 
   cellwise,bat-config-info:
-    allOf:
-      - $ref: /schemas/types.yaml#definitions/uint8-array
-      - minItems: 64
-        maxItems: 64
-    maxItems: 1
     description:
       Specifies the binary battery parameter blob
+    allOf:
+      - $ref: /schemas/types.yaml#definitions/uint8-array
+    items:
+      - minItems: 64
+        maxItems: 64
 
   cellwise,monitor-interval-ms:
-    $ref: /schemas/types.yaml#/definitions/uint32
     description:
       Specifies the interval in milliseconds gauge values are polled at
+    $ref: /schemas/types.yaml#/definitions/uint32
 
   power-supplies:
-    allOf:
-      - $ref: /schemas/types.yaml#/definitions/phandle
     description:
       Specifies supplies used for charging the battery connected to this gauge
+    allOf:
+      - $ref: /schemas/types.yaml#/definitions/phandle-array
+      - minItems: 1
+        maxItems: 8 # Should be enough
 
   monitored-battery:
-    $ref: /schemas/types.yaml#/definitions/phandle
     description:
       Specifies the phandle of a simple-battery connected to this gauge
+    $ref: /schemas/types.yaml#/definitions/phandle
 
 required:
   - compatible
