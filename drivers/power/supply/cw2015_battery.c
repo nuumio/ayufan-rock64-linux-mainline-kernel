@@ -26,6 +26,7 @@
 #define CW2015_SIZE_BATINFO		64
 
 #define CW2015_READ_TRIES		30
+#define CW2015_RESET_TRIES		5
 
 #define CW2015_REG_VERSION		0x0
 #define CW2015_REG_VCELL		0x2
@@ -56,6 +57,8 @@
 #define CW2015_BATTERY_CHARGING_ZERO		(1800 * 1000)
 
 #define CW2015_DEFAULT_MONITOR_MS		8000
+
+#define CW2015_AVERAGING_SAMPLES		3
 
 struct cw_bat_platform_data {
 	u8 *cw_bat_config_info;
@@ -408,7 +411,7 @@ static int cw_get_voltage(struct cw_battery *cw_bat)
 	u16 reg_val;
 	u32 avg = 0;
 
-	for(i = 0; i < 3; i++) {
+	for (i = 0; i < CW2015_AVERAGING_SAMPLES; i++) {
 		ret = cw_read_word(cw_bat, CW2015_REG_VCELL, &reg_val);
 		if (ret < 0)
 			return ret;
@@ -530,7 +533,7 @@ static void cw_bat_work(struct work_struct *work)
 		cw_err(cw_bat, "Failed to read mode from gauge: %d", ret);
 	} else {
 		if ((reg_val & CW2015_MODE_SLEEP_MASK) == CW2015_MODE_SLEEP) {
-			for (i = 0; i < 5; i++) {
+			for (i = 0; i < CW2015_RESET_TRIES; i++) {
 				if (cw_por(cw_bat) == 0)
 					break;
 			}
