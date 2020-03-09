@@ -23,28 +23,28 @@
 #include <linux/workqueue.h>
 #include <linux/regmap.h>
 
-#define CW2015_SIZE_BATINFO    64
+#define CW2015_SIZE_BATINFO		64
 
-#define CW2015_READ_TRIES 30
+#define CW2015_READ_TRIES		30
 
-#define CW2015_REG_VERSION             0x0
-#define CW2015_REG_VCELL               0x2
-#define CW2015_REG_SOC                 0x4
-#define CW2015_REG_RRT_ALERT           0x6
-#define CW2015_REG_CONFIG              0x8
-#define CW2015_REG_MODE                0xA
-#define CW2015_REG_BATINFO             0x10
+#define CW2015_REG_VERSION		0x0
+#define CW2015_REG_VCELL		0x2
+#define CW2015_REG_SOC			0x4
+#define CW2015_REG_RRT_ALERT		0x6
+#define CW2015_REG_CONFIG		0x8
+#define CW2015_REG_MODE			0xA
+#define CW2015_REG_BATINFO		0x10
 
-#define CW2015_MODE_SLEEP_MASK         (0x3<<6)
-#define CW2015_MODE_SLEEP              (0x3<<6)
-#define CW2015_MODE_NORMAL             (0x0<<6)
-#define CW2015_MODE_QUICK_START        (0x3<<4)
-#define CW2015_MODE_RESTART            (0xf<<0)
+#define CW2015_MODE_SLEEP_MASK		(0x3<<6)
+#define CW2015_MODE_SLEEP		(0x3<<6)
+#define CW2015_MODE_NORMAL		(0x0<<6)
+#define CW2015_MODE_QUICK_START		(0x3<<4)
+#define CW2015_MODE_RESTART		(0xf<<0)
 
-#define CW2015_CONFIG_UPDATE_FLG       (0x01<<1)
-#define CW2015_ATHD(x)                 ((x)<<3)
-#define CW2015_MASK_ATHD               (0x1f<<3)
-#define CW2015_MASK_SOC                (0x1fff)
+#define CW2015_CONFIG_UPDATE_FLG	(0x01<<1)
+#define CW2015_ATHD(x)			((x)<<3)
+#define CW2015_MASK_ATHD		(0x1f<<3)
+#define CW2015_MASK_SOC			(0x1fff)
 
 #define CW2015_BATTERY_UP_MAX_CHANGE		(420 * 1000)
 #define CW2015_BATTERY_DOWN_MAX_CHANGE		(120 * 1000)
@@ -54,8 +54,6 @@
 #define CW2015_BATTERY_JUMP_TO_ZERO		(30 * 1000)
 #define CW2015_BATTERY_CAPACITY_ERROR		(40 * 1000)
 #define CW2015_BATTERY_CHARGING_ZERO		(1800 * 1000)
-
-#define CW2015_NO_CHARGING		0
 
 #define CW2015_TIMER_MS_COUNTS			1000
 #define CW2015_DEFAULT_MONITOR_SEC		8
