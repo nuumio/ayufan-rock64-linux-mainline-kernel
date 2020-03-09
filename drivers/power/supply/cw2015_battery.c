@@ -139,7 +139,7 @@ int cw_update_config_info(struct cw_battery *cw_bat)
 	u8 reg_val;
 	u8 reset_val;
 
-	/* make sure no in sleep mode */
+	/* make sure gauge is not in sleep mode */
 	ret = cw_read(cw_bat, CW2015_REG_MODE, &reg_val);
 	if (ret < 0)
 		return ret;
@@ -151,7 +151,7 @@ int cw_update_config_info(struct cw_battery *cw_bat)
 		return -EINVAL;
 	}
 
-	/* update new battery info */
+	/* write new battery info */
 	ret = cw_write_bulk(cw_bat, CW2015_REG_BATINFO,
 				cw_bat->plat_data.cw_bat_config_info,
 				CW2015_SIZE_BATINFO);
@@ -160,8 +160,8 @@ int cw_update_config_info(struct cw_battery *cw_bat)
 		return ret;
 
 	reg_val |= CW2015_CONFIG_UPDATE_FLG;	/* set UPDATE_FLAG */
-	reg_val &= ~CW2015_MASK_ATHD;	/* clear ATHD */
-	reg_val |= CW2015_ATHD(cw_bat->alert_level);	/* set CW2015_ATHD */
+	reg_val &= ~CW2015_MASK_ATHD;	/* clear alert level */
+	reg_val |= CW2015_ATHD(cw_bat->alert_level);	/* set alert level */
 	ret = cw_write(cw_bat, CW2015_REG_CONFIG, reg_val);
 	if (ret < 0)
 		return ret;
@@ -318,7 +318,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 			cw_capacity = cw_bat->capacity;
 	}
 
-	/* case 2 : aviod no charge full */
+	/* case 2 : ensure battery reaches full state */
 	if ((cw_bat->charger_mode > 0) &&
 	    (cw_capacity >= 95) && (cw_capacity <= cw_bat->capacity)) {
 		charging_loop++;
@@ -333,7 +333,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 		}
 	}
 
-	/* case 3 : avoid battery level jump to CW_BAT */
+	/* case 3 : prevent battery level from jumping to CW_BAT */
 	if ((cw_bat->charger_mode == 0) &&
 	    (cw_capacity <= cw_bat->capacity) &&
 	    (cw_capacity >= 90) && (jump_flag == 1)) {
@@ -373,7 +373,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 		}
 	}
 
-	/* case 4 : avoid battery level is 0% when long time charging */
+	/* case 4 : reset gauge if stuck at 0% while charging */
 	if ((cw_bat->charger_mode > 0) && (cw_capacity == 0)) {
 		charging_5_loop++;
 		if (charging_5_loop >
@@ -660,21 +660,25 @@ static int cw2015_parse_dt(struct cw_battery *cw_bat)
 
 	memset(data, 0, sizeof(*data));
 
-	/* determine the number of config info */
 	prop = of_find_property(node, PREFIX"bat-config-info", &length);
 	if (!prop)
 		return -EINVAL;
 
-	if (length > 0) {
-		size_t size = length;
+	if (length != CW2015_SIZE_BATINFO) {
+		cw_err(cw_bat, "bat-config-info must be %d bytes",
+			CW2015_SIZE_BATINFO);
+		return -EINVAL;
+	}
 
-		data->cw_bat_config_info = devm_kzalloc(dev, size, GFP_KERNEL);
+	if (length > 0) {
+		data->cw_bat_config_info =
+			devm_kzalloc(dev, CW2015_SIZE_BATINFO, GFP_KERNEL);
 		if (!data->cw_bat_config_info)
 			return -ENOMEM;
 
 		ret = of_property_read_u8_array(node, PREFIX"bat-config-info",
 						 data->cw_bat_config_info,
-						 length);
+						 CW2015_SIZE_BATINFO);
 		if (ret < 0)
 			return ret;
 	}
