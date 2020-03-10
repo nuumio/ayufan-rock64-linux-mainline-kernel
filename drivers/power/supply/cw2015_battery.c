@@ -692,8 +692,8 @@ static const struct regmap_range regmap_ranges_rd_yes[] = {
 	regmap_reg_range(CW2015_REG_VERSION, CW2015_REG_VERSION),
 	regmap_reg_range(CW2015_REG_VCELL, CW2015_REG_CONFIG),
 	regmap_reg_range(CW2015_REG_MODE, CW2015_REG_MODE),
-	regmap_reg_range(CW2015_REG_BATINFO, CW2015_REG_BATINFO +
-				CW2015_SIZE_BATINFO - 1),
+	regmap_reg_range(CW2015_REG_BATINFO,
+				CW2015_REG_BATINFO + CW2015_SIZE_BATINFO - 1),
 };
 
 static const struct regmap_access_table regmap_rd_table = {
@@ -704,8 +704,8 @@ static const struct regmap_access_table regmap_rd_table = {
 static const struct regmap_range regmap_ranges_wr_yes[] = {
 	regmap_reg_range(CW2015_REG_RRT_ALERT, CW2015_REG_CONFIG),
 	regmap_reg_range(CW2015_REG_MODE, CW2015_REG_MODE),
-	regmap_reg_range(CW2015_REG_BATINFO, CW2015_REG_BATINFO +
-				CW2015_SIZE_BATINFO - 1),
+	regmap_reg_range(CW2015_REG_BATINFO,
+				CW2015_REG_BATINFO + CW2015_SIZE_BATINFO - 1),
 };
 
 static const struct regmap_access_table regmap_wr_table = {
