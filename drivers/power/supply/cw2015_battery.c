@@ -21,6 +21,7 @@
 #include <linux/property.h>
 #include <linux/regmap.h>
 #include <linux/slab.h>
+#include <linux/time.h>
 #include <linux/timekeeping.h>
 #include <linux/workqueue.h>
 
@@ -48,15 +49,11 @@
 #define CW2015_MASK_ATHD		GENMASK(7, 3)
 #define CW2015_MASK_SOC			GENMASK(12, 0)
 
-/* values from Rockchip BSP cw2015 driver, seem to work well */
-#define CW2015_BATTERY_UP_MAX_CHANGE		(420 * 1000)
-#define CW2015_BATTERY_DOWN_MAX_CHANGE		(120 * 1000)
-#define CW2015_BATTERY_DOWN_CHANGE		60
-#define CW2015_BATTERY_DOWN_MIN_CHANGE_RUN	30
-#define CW2015_BATTERY_DOWN_MIN_CHANGE_SLEEP	1800
-#define CW2015_BATTERY_JUMP_TO_ZERO		(30 * 1000)
-#define CW2015_BATTERY_CAPACITY_ERROR		(40 * 1000)
-#define CW2015_BATTERY_CHARGING_ZERO		(1800 * 1000)
+/* values from Rockchip BSP cw201x driver, seem to work well */
+#define CW2015_BAT_UP_MAX_CHANGE_MS	(420 * MSEC_PER_SEC)
+#define CW2015_BAT_DOWN_MAX_CHANGE_MS	(120 * MSEC_PER_SEC)
+#define CW2015_BAT_CAPACITY_ERROR_MS	(40 * MSEC_PER_SEC)
+#define CW2015_BAT_CHARGING_ZERO_MS	(1800 * MSEC_PER_SEC)
 
 /* poll interval from CellWise GPL Android driver example */
 #define CW2015_DEFAULT_POLL_INTERVAL_MS		8000
@@ -283,7 +280,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 		dev_err(cw_bat->dev, "Invalid SoC, SoC = %d %%", cw_capacity);
 		reset_loop++;
 		if (reset_loop >
-		    (CW2015_BATTERY_CAPACITY_ERROR / cw_bat->poll_interval_ms)) {
+		    (CW2015_BAT_CAPACITY_ERROR_MS / cw_bat->poll_interval_ms)) {
 			cw_por(cw_bat);
 			reset_loop = 0;
 		}
@@ -306,7 +303,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 	    (cw_capacity >= 95) && (cw_capacity <= cw_bat->capacity)) {
 		charging_loop++;
 		if (charging_loop >
-		    (CW2015_BATTERY_UP_MAX_CHANGE / cw_bat->poll_interval_ms)) {
+		    (CW2015_BAT_UP_MAX_CHANGE_MS / cw_bat->poll_interval_ms)) {
 			cw_capacity = (cw_bat->capacity + 1) <= 100 ?
 				      (cw_bat->capacity + 1) : 100;
 			charging_loop = 0;
@@ -325,7 +322,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 			sleep_cap = (cw_bat->after.tv_sec +
 				     discharging_loop *
 				     (cw_bat->poll_interval_ms / 1000)) /
-				     (CW2015_BATTERY_DOWN_MAX_CHANGE / 1000);
+				     (CW2015_BAT_DOWN_MAX_CHANGE_MS / 1000);
 			dev_dbg(cw_bat->dev, "Estimated capacity lost during sleep: %d",
 				sleep_cap);
 
@@ -343,7 +340,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 #endif
 		discharging_loop++;
 		if (discharging_loop >
-		    (CW2015_BATTERY_DOWN_MAX_CHANGE / cw_bat->poll_interval_ms)) {
+		    (CW2015_BAT_DOWN_MAX_CHANGE_MS / cw_bat->poll_interval_ms)) {
 			if (cw_capacity >= cw_bat->capacity - 1)
 				jump_flag = 0;
 			else
@@ -358,7 +355,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 	if ((cw_bat->charger_mode > 0) && (cw_capacity == 0)) {
 		charging_5_loop++;
 		if (charging_5_loop >
-		    CW2015_BATTERY_CHARGING_ZERO / cw_bat->poll_interval_ms) {
+		    CW2015_BAT_CHARGING_ZERO_MS / cw_bat->poll_interval_ms) {
 			cw_por(cw_bat);
 			charging_5_loop = 0;
 		}
