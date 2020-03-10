@@ -49,11 +49,10 @@
 #define CW2015_MASK_ATHD		GENMASK(7, 3)
 #define CW2015_MASK_SOC			GENMASK(12, 0)
 
-/* values from Rockchip BSP cw201x driver, seem to work well */
-#define CW2015_BAT_UP_MAX_CHANGE_MS	(420 * MSEC_PER_SEC)
-#define CW2015_BAT_DOWN_MAX_CHANGE_MS	(120 * MSEC_PER_SEC)
-#define CW2015_BAT_CAPACITY_ERROR_MS	(40 * MSEC_PER_SEC)
-#define CW2015_BAT_CHARGING_ZERO_MS	(1800 * MSEC_PER_SEC)
+/* reset gauage of no valid state of charge could be polled for 40s */
+#define CW2015_BAT_SOC_ERROR_MS		(40 * MSEC_PER_SEC)
+/* reset gauage if state of charge stuck for half an hour during charging */
+#define CW2015_BAT_CHARGING_STUCK_MS	(1800 * MSEC_PER_SEC)
 
 /* poll interval from CellWise GPL Android driver example */
 #define CW2015_DEFAULT_POLL_INTERVAL_MS		8000
@@ -71,10 +70,8 @@ struct cw_battery {
 
 	struct timespec64 time_suspend;
 
-	bool resumed;
 	bool charger_attached;
 	bool battery_changed;
-	bool capacity_jumped;
 
 	int capacity;
 	int voltage;
@@ -86,6 +83,7 @@ struct cw_battery {
 	u8 alert_level;
 
 	unsigned int read_errors;
+	unsigned int charge_stuck_cnt;
 };
 
 static int cw_read_word(struct cw_battery *cw_bat, u8 reg, u16 *val)
@@ -259,31 +257,25 @@ static int cw_por(struct cw_battery *cw_bat)
 	return 0;
 }
 
-#define HYSTERESIS(val, target, up, down) \
-	(((val) < (target) + (up)) && ((val) > (target) - (down)))
+#define HYSTERESIS(current, previous, up, down) \
+	(((current) < (previous) + (up)) && ((current) > (previous) - (down)))
 
 static int cw_get_capacity(struct cw_battery *cw_bat)
 {
-	int cw_capacity;
+	unsigned int capacity;
 	int ret;
-	unsigned int reg_val;
 
-	static int charging_loop;
-	static int discharging_loop;
-	static int charging_5_loop;
-	int sleep_cap;
-
-	ret = regmap_read(cw_bat->regmap, CW2015_REG_SOC, &reg_val);
+	ret = regmap_read(cw_bat->regmap, CW2015_REG_SOC, &capacity);
 	if (ret)
 		return ret;
 
-	cw_capacity = reg_val;
-
-	if (cw_capacity > 100) {
-		dev_err(cw_bat->dev, "Invalid SoC, SoC = %d %%", cw_capacity);
+	if (capacity > 100) {
+		dev_err(cw_bat->dev, "Invalid SoC %d%%", capacity);
 		cw_bat->read_errors++;
 		if (cw_bat->read_errors >
-		    (CW2015_BAT_CAPACITY_ERROR_MS / cw_bat->poll_interval_ms)) {
+		    (CW2015_BAT_SOC_ERROR_MS / cw_bat->poll_interval_ms)) {
+			dev_warn(cw_bat->dev,
+				"Too many invalid SoC reports, resetting gauge");
 			cw_por(cw_bat);
 			cw_bat->read_errors = 0;
 		}
@@ -291,77 +283,30 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 	}
 	cw_bat->read_errors = 0;
 
-	/* case 1 : avoid swing  */
-	if ((cw_bat->charger_attached &&
-		HYSTERESIS(cw_capacity, cw_bat->capacity, 0, 9)) ||
-		(!cw_bat->charger_attached &&
-		HYSTERESIS(cw_capacity, cw_bat->capacity, 1, 0))) {
-			cw_capacity = cw_bat->capacity;
-	}
-
-	/* case 2 : ensure battery reaches full state */
-	if (cw_bat->charger_attached &&
-	    (cw_capacity >= 95) && (cw_capacity <= cw_bat->capacity)) {
-		charging_loop++;
-		if (charging_loop >
-		    (CW2015_BAT_UP_MAX_CHANGE_MS / cw_bat->poll_interval_ms)) {
-			cw_capacity = (cw_bat->capacity + 1) <= 100 ?
-				      (cw_bat->capacity + 1) : 100;
-			charging_loop = 0;
-			cw_bat->capacity_jumped = true;
-		} else
-			cw_capacity = cw_bat->capacity;
-	}
-
-	/* case 3 : prevent battery level from jumping to CW_BAT */
-	if (!cw_bat->charger_attached &&
-	    (cw_capacity <= cw_bat->capacity) &&
-	    (cw_capacity >= 90) && cw_bat->capacity_jumped) {
-		if (cw_bat->resumed) {
-			sleep_cap = (cw_bat->time_suspend.tv_sec +
-				     discharging_loop *
-				     (cw_bat->poll_interval_ms / 1000)) /
-				     (CW2015_BAT_DOWN_MAX_CHANGE_MS / 1000);
-			dev_dbg(cw_bat->dev,
-				"Estimated capacity lost during sleep: %d",
-				sleep_cap);
-
-			if (cw_capacity >= cw_bat->capacity - sleep_cap)
-				return cw_capacity;
-
-			if (!sleep_cap)
-				discharging_loop = discharging_loop +
-					1 + cw_bat->time_suspend.tv_sec /
-					(cw_bat->poll_interval_ms / 1000);
-			else
-				discharging_loop = 0;
-			return cw_bat->capacity - sleep_cap;
-		}
-		discharging_loop++;
-		if (discharging_loop >
-		    (CW2015_BAT_DOWN_MAX_CHANGE_MS / cw_bat->poll_interval_ms)) {
-			if (cw_capacity >= cw_bat->capacity - 1)
-				cw_bat->capacity_jumped = false;
-			else
-				cw_capacity = cw_bat->capacity - 1;
-
-			discharging_loop = 0;
-		} else
-			cw_capacity = cw_bat->capacity;
-	}
-
-	/* case 4 : reset gauge if stuck at 0% while charging */
-	if (cw_bat->charger_attached && (cw_capacity == 0)) {
-		charging_5_loop++;
-		if (charging_5_loop >
-		    CW2015_BAT_CHARGING_ZERO_MS / cw_bat->poll_interval_ms) {
+	/* Reset gauge if stuck while charging */
+	if (cw_bat->status == POWER_SUPPLY_STATUS_CHARGING &&
+		capacity == cw_bat->capacity) {
+		cw_bat->charge_stuck_cnt++;
+		if (cw_bat->charge_stuck_cnt >
+		    CW2015_BAT_CHARGING_STUCK_MS / cw_bat->poll_interval_ms) {
+			dev_warn(cw_bat->dev,
+				"SoC stuck @%u%%, resetting gauge", capacity);
 			cw_por(cw_bat);
-			charging_5_loop = 0;
+			cw_bat->charge_stuck_cnt = 0;
 		}
-	} else
-		charging_5_loop = 0;
+	} else {
+		cw_bat->charge_stuck_cnt = 0;
+	}
 
-	return cw_capacity;
+	/* Ignore state of charge swings */
+	if ((cw_bat->charger_attached &&
+		HYSTERESIS(capacity, cw_bat->capacity, 0, 3)) ||
+		(!cw_bat->charger_attached &&
+		HYSTERESIS(capacity, cw_bat->capacity, 3, 0))) {
+			capacity = cw_bat->capacity;
+	}
+
+	return capacity;
 }
 
 static int cw_get_voltage(struct cw_battery *cw_bat)
@@ -518,8 +463,6 @@ static void cw_bat_work(struct work_struct *work)
 	dev_dbg(cw_bat->dev, "status = %d", cw_bat->status);
 	dev_dbg(cw_bat->dev, "capacity = %d", cw_bat->capacity);
 	dev_dbg(cw_bat->dev, "voltage = %d", cw_bat->voltage);
-
-	cw_bat->resumed = false;
 
 	if (cw_bat->battery_changed) {
 		power_supply_changed(cw_bat->rk_bat);
@@ -780,7 +723,6 @@ static int __maybe_unused cw_bat_suspend(struct device *dev)
 	struct i2c_client *client = to_i2c_client(dev);
 	struct cw_battery *cw_bat = i2c_get_clientdata(client);
 
-	ktime_get_boottime_ts64(&cw_bat->time_suspend);
 	cancel_delayed_work_sync(&cw_bat->battery_delay_work);
 	return 0;
 }
@@ -789,11 +731,7 @@ static int __maybe_unused cw_bat_resume(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct cw_battery *cw_bat = i2c_get_clientdata(client);
-	struct timespec64 now;
 
-	cw_bat->resumed = true;
-	ktime_get_boottime_ts64(&now);
-	cw_bat->time_suspend = timespec64_sub(now, cw_bat->time_suspend);
 	queue_delayed_work(cw_bat->battery_workqueue,
 			   &cw_bat->battery_delay_work, 0);
 	return 0;
