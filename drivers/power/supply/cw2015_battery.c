@@ -6,8 +6,7 @@
  * Copyright (C) 2020, Tobias Schramm
  *
  * Authors: xuhuicong <xhc@rock-chips.com>
- * Authors: Tobias Schramm <tobias@t-sys.eu>
- *
+ * Authors: Tobias Schramm <t.schramm@manjaro.org>
  */
 
 #include <linux/delay.h>
