@@ -78,7 +78,6 @@ struct cw_battery {
 	int voltage;
 	int status;
 	int time_to_empty;
-	int alt;
 	u32 poll_interval_ms;
 	int charge_count;
 	u8 alert_level;
