@@ -794,8 +794,7 @@ static int cw_bat_probe(struct i2c_client *client,
 	return 0;
 }
 
-#ifdef CONFIG_PM
-static int cw_bat_suspend(struct device *dev)
+static int __maybe_unused cw_bat_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct cw_battery *cw_bat = i2c_get_clientdata(client);
@@ -805,7 +804,7 @@ static int cw_bat_suspend(struct device *dev)
 	return 0;
 }
 
-static int cw_bat_resume(struct device *dev)
+static int __maybe_unused cw_bat_resume(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct cw_battery *cw_bat = i2c_get_clientdata(client);
@@ -844,9 +843,7 @@ MODULE_DEVICE_TABLE(of, cw2015_of_match);
 static struct i2c_driver cw_bat_driver = {
 	.driver = {
 		.name = "cw2015",
-#ifdef CONFIG_PM
 		.pm = &cw_bat_pm_ops,
-#endif
 	},
 	.probe = cw_bat_probe,
 	.remove = cw_bat_remove,
