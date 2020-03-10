@@ -9,43 +9,45 @@
  * Authors: Tobias Schramm <t.schramm@manjaro.org>
  */
 
+#include <linux/bits.h>
 #include <linux/delay.h>
-#include <linux/init.h>
 #include <linux/i2c.h>
+#include <linux/init.h>
+#include <linux/gpio/consumer.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/of_gpio.h>
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
+#include <linux/regmap.h>
 #include <linux/slab.h>
 #include <linux/timekeeping.h>
 #include <linux/workqueue.h>
-#include <linux/regmap.h>
 
 #define CW2015_SIZE_BATINFO		64
 
 #define CW2015_READ_TRIES		30
 #define CW2015_RESET_TRIES		5
 
-#define CW2015_REG_VERSION		0x0
-#define CW2015_REG_VCELL		0x2
-#define CW2015_REG_SOC			0x4
-#define CW2015_REG_RRT_ALERT		0x6
-#define CW2015_REG_CONFIG		0x8
-#define CW2015_REG_MODE			0xA
+#define CW2015_REG_VERSION		0x00
+#define CW2015_REG_VCELL		0x02
+#define CW2015_REG_SOC			0x04
+#define CW2015_REG_RRT_ALERT		0x06
+#define CW2015_REG_CONFIG		0x08
+#define CW2015_REG_MODE			0x0A
 #define CW2015_REG_BATINFO		0x10
 
-#define CW2015_MODE_SLEEP_MASK		(0x3<<6)
-#define CW2015_MODE_SLEEP		(0x3<<6)
-#define CW2015_MODE_NORMAL		(0x0<<6)
-#define CW2015_MODE_QUICK_START		(0x3<<4)
-#define CW2015_MODE_RESTART		(0xf<<0)
+#define CW2015_MODE_SLEEP_MASK		GENMASK(7, 6)
+#define CW2015_MODE_SLEEP		(0x03 << 6)
+#define CW2015_MODE_NORMAL		(0x00 << 6)
+#define CW2015_MODE_QUICK_START		(0x03 << 4)
+#define CW2015_MODE_RESTART		(0x0f << 0)
 
-#define CW2015_CONFIG_UPDATE_FLG	(0x01<<1)
-#define CW2015_ATHD(x)			((x)<<3)
-#define CW2015_MASK_ATHD		(0x1f<<3)
-#define CW2015_MASK_SOC			(0x1fff)
+#define CW2015_CONFIG_UPDATE_FLG	(0x01 << 1)
+#define CW2015_ATHD(x)			((x) << 3)
+#define CW2015_MASK_ATHD		GENMASK(7, 3)
+#define CW2015_MASK_SOC			GENMASK(12, 0)
 
+/* values from Rockchip BSP cw2015 driver, seem to work well */
 #define CW2015_BATTERY_UP_MAX_CHANGE		(420 * 1000)
 #define CW2015_BATTERY_DOWN_MAX_CHANGE		(120 * 1000)
 #define CW2015_BATTERY_DOWN_CHANGE		60
@@ -55,6 +57,7 @@
 #define CW2015_BATTERY_CAPACITY_ERROR		(40 * 1000)
 #define CW2015_BATTERY_CHARGING_ZERO		(1800 * 1000)
 
+/* monitor interval from CellWise GPL Android driver example */
 #define CW2015_DEFAULT_MONITOR_MS		8000
 
 #define CW2015_AVERAGING_SAMPLES		3
