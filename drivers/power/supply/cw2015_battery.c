@@ -234,7 +234,8 @@ static int cw_init(struct cw_battery *cw_bat)
 		ret = cw_read(cw_bat, CW2015_REG_SOC, &reg_val);
 		if (ret)
 			return ret;
-		else if (reg_val <= 100) // SOC can't be more than 100 %
+		/* SoC must not be more than 100% */
+		else if (reg_val <= 100)
 			break;
 		msleep(120);
 	}
@@ -604,11 +605,11 @@ static int cw_battery_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		if (cw_battery_valid_time_to_empty(cw_bat) &&
 			cw_bat->battery.charge_full_design_uah > 0) {
-			// calculate remaining capacity
+			/* calculate remaining capacity */
 			val->intval = cw_bat->battery.charge_full_design_uah;
 			val->intval = val->intval * cw_bat->capacity / 100;
 
-			// estimate current based on time to empty (in minutes)
+			/* estimate current based on time to empty */
 			val->intval = 60 * val->intval / cw_bat->time_to_empty;
 		} else {
 			val->intval = 0;
