@@ -140,21 +140,25 @@ int cw_update_config_info(struct cw_battery *cw_bat)
 	if (ret)
 		return ret;
 
-	reg_val |= CW2015_CONFIG_UPDATE_FLG;	/* set UPDATE_FLAG */
-	reg_val &= ~CW2015_MASK_ATHD;	/* clear alert level */
-	reg_val |= CW2015_ATHD(cw_bat->alert_level);	/* set alert level */
+	/* update alert level */
+	reg_val |= CW2015_CONFIG_UPDATE_FLG;
+	reg_val &= ~CW2015_MASK_ATHD;
+	reg_val |= CW2015_ATHD(cw_bat->alert_level);
 	ret = regmap_write(cw_bat->regmap, CW2015_REG_CONFIG, reg_val);
 	if (ret)
 		return ret;
 
-	/* reset */
-	reset_val &= ~(CW2015_MODE_RESTART);
+	/* reset gauge to apply new alert level */
+	reset_val &= ~CW2015_MODE_RESTART;
 	reg_val = reset_val | CW2015_MODE_RESTART;
 	ret = regmap_write(cw_bat->regmap, CW2015_REG_MODE, reg_val);
 	if (ret)
 		return ret;
 
+	/* wait for gauge to reset */
 	msleep(20);
+
+	/* clear reset flag */
 	ret = regmap_write(cw_bat->regmap, CW2015_REG_MODE, reset_val);
 	if (ret)
 		return ret;
