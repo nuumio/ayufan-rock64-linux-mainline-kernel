@@ -728,19 +728,13 @@ static int cw_bat_probe(struct i2c_client *client,
 
 	i2c_set_clientdata(client, cw_bat);
 	cw_bat->dev = &client->dev;
+	cw_bat->capacity = 1;
 
 	ret = cw2015_parse_properties(cw_bat);
 	if (ret) {
 		dev_err(cw_bat->dev, "Failed to parse cw2015 properties");
 		return ret;
 	}
-
-	cw_bat->capacity = 1;
-	cw_bat->voltage = 0;
-	cw_bat->status = 0;
-	cw_bat->suspend_resume_mark = 0;
-	cw_bat->charger_attached = false;
-	cw_bat->battery_changed = false;
 
 	cw_bat->regmap = devm_regmap_init_i2c(client, &cw2015_regmap_config);
 	if (IS_ERR(cw_bat->regmap)) {
