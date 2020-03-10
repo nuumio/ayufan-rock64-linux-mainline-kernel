@@ -208,7 +208,8 @@ static int cw_init(struct cw_battery *cw_bat)
 				return ret;
 		}
 	} else
-		dev_warn(cw_bat->dev, "Can't check current battery config, no config provided");
+		dev_warn(cw_bat->dev,
+			"Can't check current battery config, no config provided");
 
 	for (i = 0; i < CW2015_READ_TRIES; i++) {
 		ret = regmap_read(cw_bat->regmap, CW2015_REG_SOC, &reg_val);
@@ -587,12 +588,12 @@ static int cw2015_parse_properties(struct cw_battery *cw_bat)
 						CW2015_SIZE_BATINFO);
 		if (ret)
 			return ret;
-	} else
+	} else {
 		dev_warn(cw_bat->dev,
 			"No battery-profile found, rolling with current flash contents");
+	}
 
 	cw_bat->poll_interval_ms = CW2015_DEFAULT_POLL_INTERVAL_MS;
-
 	ret = device_property_read_u32_array(dev,
 						"cellwise,monitor-interval-ms",
 						&value, 1);
