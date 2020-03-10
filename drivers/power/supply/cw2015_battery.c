@@ -386,7 +386,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 
 static int cw_get_voltage(struct cw_battery *cw_bat)
 {
-	int ret, i, voltage;
+	int ret, i, voltage_mv;
 	u16 reg_val;
 	u32 avg = 0;
 
@@ -399,10 +399,15 @@ static int cw_get_voltage(struct cw_battery *cw_bat)
 	}
 	avg /= CW2015_AVERAGING_SAMPLES;
 
-	voltage = avg * 312 / 1024;
+	/*
+	 * 305 uV per ADC step
+	 * Use 312 / 1024  as efficient approximation of 305 / 1000
+	 * Negligible error of 0.1%
+	 */
+	voltage_mv = avg * 312 / 1024;
 
-	dev_dbg(cw_bat->dev, "Read voltage: %d mV, raw=0x%04x\n", voltage, reg_val);
-	return voltage;
+	dev_dbg(cw_bat->dev, "Read voltage: %d mV, raw=0x%04x\n", voltage_mv, reg_val);
+	return voltage_mv;
 }
 
 static int cw_get_time_to_empty(struct cw_battery *cw_bat)
