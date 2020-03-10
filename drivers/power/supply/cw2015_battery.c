@@ -397,21 +397,18 @@ static void cw_update_voltage(struct cw_battery *cw_bat)
 
 static void cw_update_status(struct cw_battery *cw_bat)
 {
-	int status;
+	int status = POWER_SUPPLY_STATUS_DISCHARGING;
 
 	if (cw_bat->charger_attached) {
 		if (cw_bat->capacity >= 100)
 			status = POWER_SUPPLY_STATUS_FULL;
 		else
 			status = POWER_SUPPLY_STATUS_CHARGING;
-	} else {
-		status = POWER_SUPPLY_STATUS_DISCHARGING;
 	}
 
-	if (cw_bat->status != status) {
-		cw_bat->status = status;
+	if (cw_bat->status != status)
 		cw_bat->battery_changed = true;
-	}
+	cw_bat->status = status;
 }
 
 static void cw_update_time_to_empty(struct cw_battery *cw_bat)
