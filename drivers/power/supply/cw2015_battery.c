@@ -63,7 +63,7 @@
 #define CW2015_AVERAGING_SAMPLES		3
 
 struct cw_battery {
-	struct i2c_client *client;
+	struct device *dev;
 	struct workqueue_struct *battery_workqueue;
 	struct delayed_work battery_delay_work;
 	struct regmap *regmap;
@@ -90,10 +90,10 @@ struct cw_battery {
 
 #define PREFIX "cellwise,"
 
-#define cw_dbg(cw_bat, ...) dev_dbg(&(cw_bat)->client->dev, __VA_ARGS__)
-#define cw_info(cw_bat, ...) dev_info(&(cw_bat)->client->dev, __VA_ARGS__)
-#define cw_warn(cw_bat, ...) dev_warn(&(cw_bat)->client->dev, __VA_ARGS__)
-#define cw_err(cw_bat, ...) dev_err(&(cw_bat)->client->dev, __VA_ARGS__)
+#define cw_dbg(cw_bat, ...) dev_dbg((cw_bat)->dev, __VA_ARGS__)
+#define cw_info(cw_bat, ...) dev_info((cw_bat)->dev, __VA_ARGS__)
+#define cw_warn(cw_bat, ...) dev_warn((cw_bat)->dev, __VA_ARGS__)
+#define cw_err(cw_bat, ...) dev_err((cw_bat)->dev, __VA_ARGS__)
 
 static int cw_read(struct cw_battery *cw_bat, u8 reg, u8 *val)
 {
@@ -660,7 +660,7 @@ static const struct power_supply_desc cw2015_bat_desc = {
 #ifdef CONFIG_OF
 static int cw2015_parse_dt(struct cw_battery *cw_bat)
 {
-	struct device *dev = &cw_bat->client->dev;
+	struct device *dev = cw_bat->dev;
 	struct device_node *node = dev->of_node;
 	struct property *prop;
 	int length;
@@ -768,7 +768,7 @@ static int cw_bat_probe(struct i2c_client *client,
 		return -ENOMEM;
 
 	i2c_set_clientdata(client, cw_bat);
-	cw_bat->client = client;
+	cw_bat->dev = &client->dev;
 
 	ret = cw2015_parse_dt(cw_bat);
 	if (ret < 0) {
@@ -797,7 +797,7 @@ static int cw_bat_probe(struct i2c_client *client,
 	}
 
 	psy_cfg.drv_data = cw_bat;
-	psy_cfg.of_node = client->dev.of_node;
+	psy_cfg.of_node = cw_bat->dev->of_node;
 
 	cw_bat->rk_bat = devm_power_supply_register(&client->dev,
 		&cw2015_bat_desc, &psy_cfg);
