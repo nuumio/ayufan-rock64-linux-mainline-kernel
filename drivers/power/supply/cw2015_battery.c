@@ -141,7 +141,7 @@ int cw_update_profile(struct cw_battery *cw_bat)
 	if (ret)
 		return ret;
 
-	/* update alert level */
+	/* set config update flag  */
 	reg_val |= CW2015_CONFIG_UPDATE_FLG;
 	reg_val &= ~CW2015_MASK_ATHD;
 	reg_val |= CW2015_ATHD(cw_bat->alert_level);
@@ -149,14 +149,14 @@ int cw_update_profile(struct cw_battery *cw_bat)
 	if (ret)
 		return ret;
 
-	/* reset gauge to apply new alert level */
+	/* reset gauge to apply new battery profile */
 	reset_val &= ~CW2015_MODE_RESTART;
 	reg_val = reset_val | CW2015_MODE_RESTART;
 	ret = regmap_write(cw_bat->regmap, CW2015_REG_MODE, reg_val);
 	if (ret)
 		return ret;
 
-	/* wait for gauge to reset */
+	/* wait for gauge to apply battery profile */
 	msleep(20);
 
 	/* clear reset flag */
@@ -164,8 +164,7 @@ int cw_update_profile(struct cw_battery *cw_bat)
 	if (ret)
 		return ret;
 
-	dev_dbg(cw_bat->dev, "Battery config updated");
-
+	dev_dbg(cw_bat->dev, "Battery profile updated");
 	return 0;
 }
 
