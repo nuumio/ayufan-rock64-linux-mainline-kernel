@@ -16,9 +16,9 @@
 #include <linux/gpio/consumer.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
+#include <linux/property.h>
 #include <linux/regmap.h>
 #include <linux/slab.h>
 #include <linux/timekeeping.h>
@@ -630,20 +630,16 @@ static const struct power_supply_desc cw2015_bat_desc = {
 	.get_property	= cw_battery_get_property,
 };
 
-static int cw2015_parse_dt(struct cw_battery *cw_bat)
+static int cw2015_parse_properties(struct cw_battery *cw_bat)
 {
 	struct device *dev = cw_bat->dev;
-	struct device_node *node = dev->of_node;
-	struct property *prop;
 	int length;
 	u32 value;
 	int ret;
 
-	if (!node)
-		return -ENODEV;
-
-	prop = of_find_property(node, "cellwise,battery-profile", &length);
-	if (prop) {
+	length = device_property_read_u8_array(dev, "cellwise,battery-profile",
+						NULL, 0);
+	if (length) {
 		if (length != CW2015_SIZE_BATINFO) {
 			dev_err(cw_bat->dev, "battery-profile must be %d bytes",
 				CW2015_SIZE_BATINFO);
@@ -658,9 +654,10 @@ static int cw2015_parse_dt(struct cw_battery *cw_bat)
 			return -ENOMEM;
 		}
 
-		ret = of_property_read_u8_array(node, "cellwise,battery-profile",
-						 cw_bat->bat_profile,
-						 CW2015_SIZE_BATINFO);
+		ret = device_property_read_u8_array(dev,
+						"cellwise,battery-profile",
+						cw_bat->bat_profile,
+						CW2015_SIZE_BATINFO);
 		if (ret)
 			return ret;
 	} else
@@ -669,7 +666,9 @@ static int cw2015_parse_dt(struct cw_battery *cw_bat)
 
 	cw_bat->monitor_sec = CW2015_DEFAULT_MONITOR_MS;
 
-	ret = of_property_read_u32(node, "cellwise,monitor-interval-ms", &value);
+	ret = device_property_read_u32_array(dev,
+						"cellwise,monitor-interval-ms",
+						&value, 1);
 	if (ret >= 0) {
 		dev_dbg(cw_bat->dev, "Overriding default monitor-interval with %u ms",
 			value);
@@ -727,7 +726,7 @@ static int cw_bat_probe(struct i2c_client *client,
 {
 	int ret;
 	struct cw_battery *cw_bat;
-	struct power_supply_config psy_cfg = {0};
+	struct power_supply_config psy_cfg = { };
 
 	cw_bat = devm_kzalloc(&client->dev, sizeof(*cw_bat), GFP_KERNEL);
 	if (!cw_bat)
@@ -736,9 +735,9 @@ static int cw_bat_probe(struct i2c_client *client,
 	i2c_set_clientdata(client, cw_bat);
 	cw_bat->dev = &client->dev;
 
-	ret = cw2015_parse_dt(cw_bat);
+	ret = cw2015_parse_properties(cw_bat);
 	if (ret) {
-		dev_err(cw_bat->dev, "Failed to parse cw2015 dt data");
+		dev_err(cw_bat->dev, "Failed to parse cw2015 properties");
 		return ret;
 	}
 
@@ -763,7 +762,7 @@ static int cw_bat_probe(struct i2c_client *client,
 	}
 
 	psy_cfg.drv_data = cw_bat;
-	psy_cfg.of_node = cw_bat->dev->of_node;
+	psy_cfg.fwnode = dev_fwnode(cw_bat->dev);
 
 	cw_bat->rk_bat = devm_power_supply_register(&client->dev,
 		&cw2015_bat_desc, &psy_cfg);

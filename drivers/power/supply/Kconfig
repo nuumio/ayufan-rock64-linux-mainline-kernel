@@ -118,7 +118,8 @@ config BATTERY_CPCAP
 
 config BATTERY_CW2015
 	tristate "CW2015 Battery driver"
-	depends on OF
+	depends on I2C
+	select REGMAP_I2C
 	help
 	  Say Y here to enable support for the cellwise cw2015
 	  battery fuel gauge (used in the Pinebook Pro & others)
