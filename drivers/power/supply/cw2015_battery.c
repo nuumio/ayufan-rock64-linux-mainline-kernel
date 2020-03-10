@@ -259,6 +259,9 @@ static int cw_por(struct cw_battery *cw_bat)
 	return 0;
 }
 
+#define HYSTERESIS(val, target, up, down) \
+	(((val) < (target) + (up)) && ((val) > (target) - (down)))
+
 static int cw_get_capacity(struct cw_battery *cw_bat)
 {
 	int cw_capacity;
@@ -288,13 +291,11 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 	}
 	cw_bat->read_errors = 0;
 
-	/* case 1 : aviod swing */
+	/* case 1 : avoid swing  */
 	if ((cw_bat->charger_attached &&
-	     (cw_capacity <= cw_bat->capacity - 1) &&
-	     (cw_capacity > cw_bat->capacity - 9)) ||
-	    (!cw_bat->charger_attached &&
-	     (cw_capacity == (cw_bat->capacity + 1)))) {
-		if (!(cw_capacity == 0 && cw_bat->capacity <= 2))
+		HYSTERESIS(cw_capacity, cw_bat->capacity, 0, 9)) ||
+		(!cw_bat->charger_attached &&
+		HYSTERESIS(cw_capacity, cw_bat->capacity, 1, 0))) {
 			cw_capacity = cw_bat->capacity;
 	}
 
