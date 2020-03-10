@@ -377,9 +377,6 @@ static void cw_update_capacity(struct cw_battery *cw_bat)
 	if (capacity < 0)
 		dev_err(cw_bat->dev, "Failed to get SoC from gauge: %d",
 			capacity);
-	else if (capacity > 100)
-		dev_err(cw_bat->dev, "Got invalid SoC from gauge: %d %%",
-			capacity);
 	else if (cw_bat->capacity != capacity) {
 		cw_bat->capacity = capacity;
 		cw_bat->battery_changed = true;
