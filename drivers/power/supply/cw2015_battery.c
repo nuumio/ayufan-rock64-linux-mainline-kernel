@@ -322,9 +322,8 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 				      (cw_bat->capacity + 1) : 100;
 			charging_loop = 0;
 			jump_flag = 1;
-		} else {
+		} else
 			cw_capacity = cw_bat->capacity;
-		}
 	}
 
 	/* case 3 : prevent battery level from jumping to CW_BAT */
@@ -362,9 +361,8 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 				cw_capacity = cw_bat->capacity - 1;
 
 			discharging_loop = 0;
-		} else {
+		} else
 			cw_capacity = cw_bat->capacity;
-		}
 	}
 
 	/* case 4 : reset gauge if stuck at 0% while charging */
@@ -375,9 +373,8 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 			cw_por(cw_bat);
 			charging_5_loop = 0;
 		}
-	} else if (charging_5_loop != 0) {
+	} else
 		charging_5_loop = 0;
-	}
 #ifdef CONFIG_PM
 	if (cw_bat->suspend_resume_mark == 1)
 		cw_bat->suspend_resume_mark = 0;
