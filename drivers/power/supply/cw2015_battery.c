@@ -83,6 +83,8 @@ struct cw_battery {
 
 	u32 poll_interval_ms;
 	u8 alert_level;
+
+	unsigned int read_errors;
 };
 
 static int cw_read_word(struct cw_battery *cw_bat, u8 reg, u16 *val)
@@ -262,7 +264,6 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 	int ret;
 	unsigned int reg_val;
 
-	static int reset_loop;
 	static int charging_loop;
 	static int discharging_loop;
 	static int jump_flag;
@@ -277,15 +278,15 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 
 	if (cw_capacity > 100) {
 		dev_err(cw_bat->dev, "Invalid SoC, SoC = %d %%", cw_capacity);
-		reset_loop++;
-		if (reset_loop >
+		cw_bat->read_errors++;
+		if (cw_bat->read_errors >
 		    (CW2015_BAT_CAPACITY_ERROR_MS / cw_bat->poll_interval_ms)) {
 			cw_por(cw_bat);
-			reset_loop = 0;
+			cw_bat->read_errors = 0;
 		}
 		return cw_bat->capacity;
 	}
-	reset_loop = 0;
+	cw_bat->read_errors = 0;
 
 	/* case 1 : aviod swing */
 	if ((cw_bat->charger_attached &&
