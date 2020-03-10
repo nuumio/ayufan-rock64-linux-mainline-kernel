@@ -58,8 +58,8 @@
 #define CW2015_BATTERY_CAPACITY_ERROR		(40 * 1000)
 #define CW2015_BATTERY_CHARGING_ZERO		(1800 * 1000)
 
-/* monitor interval from CellWise GPL Android driver example */
-#define CW2015_DEFAULT_MONITOR_MS		8000
+/* poll interval from CellWise GPL Android driver example */
+#define CW2015_DEFAULT_POLL_INTERVAL_MS		8000
 
 #define CW2015_AVERAGING_SAMPLES		3
 
@@ -83,7 +83,7 @@ struct cw_battery {
 	int status;
 	int time_to_empty;
 	int alt;
-	u32 monitor_sec;
+	u32 poll_interval_ms;
 	int bat_change;
 	int charge_count;
 	u8 alert_level;
@@ -283,7 +283,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 		dev_err(cw_bat->dev, "Invalid SoC, SoC = %d %%", cw_capacity);
 		reset_loop++;
 		if (reset_loop >
-		    (CW2015_BATTERY_CAPACITY_ERROR / cw_bat->monitor_sec)) {
+		    (CW2015_BATTERY_CAPACITY_ERROR / cw_bat->poll_interval_ms)) {
 			cw_por(cw_bat);
 			reset_loop = 0;
 		}
@@ -306,7 +306,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 	    (cw_capacity >= 95) && (cw_capacity <= cw_bat->capacity)) {
 		charging_loop++;
 		if (charging_loop >
-		    (CW2015_BATTERY_UP_MAX_CHANGE / cw_bat->monitor_sec)) {
+		    (CW2015_BATTERY_UP_MAX_CHANGE / cw_bat->poll_interval_ms)) {
 			cw_capacity = (cw_bat->capacity + 1) <= 100 ?
 				      (cw_bat->capacity + 1) : 100;
 			charging_loop = 0;
@@ -324,7 +324,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 			cw_bat->suspend_resume_mark = 0;
 			sleep_cap = (cw_bat->after.tv_sec +
 				     discharging_loop *
-				     (cw_bat->monitor_sec / 1000)) /
+				     (cw_bat->poll_interval_ms / 1000)) /
 				     (CW2015_BATTERY_DOWN_MAX_CHANGE / 1000);
 			dev_dbg(cw_bat->dev, "Estimated capacity lost during sleep: %d",
 				sleep_cap);
@@ -335,7 +335,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 			if (!sleep_cap)
 				discharging_loop = discharging_loop +
 					1 + cw_bat->after.tv_sec /
-					(cw_bat->monitor_sec / 1000);
+					(cw_bat->poll_interval_ms / 1000);
 			else
 				discharging_loop = 0;
 			return cw_bat->capacity - sleep_cap;
@@ -343,7 +343,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 #endif
 		discharging_loop++;
 		if (discharging_loop >
-		    (CW2015_BATTERY_DOWN_MAX_CHANGE / cw_bat->monitor_sec)) {
+		    (CW2015_BATTERY_DOWN_MAX_CHANGE / cw_bat->poll_interval_ms)) {
 			if (cw_capacity >= cw_bat->capacity - 1)
 				jump_flag = 0;
 			else
@@ -358,7 +358,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 	if ((cw_bat->charger_mode > 0) && (cw_capacity == 0)) {
 		charging_5_loop++;
 		if (charging_5_loop >
-		    CW2015_BATTERY_CHARGING_ZERO / cw_bat->monitor_sec) {
+		    CW2015_BATTERY_CHARGING_ZERO / cw_bat->poll_interval_ms) {
 			cw_por(cw_bat);
 			charging_5_loop = 0;
 		}
@@ -532,7 +532,7 @@ static void cw_bat_work(struct work_struct *work)
 	}
 	queue_delayed_work(cw_bat->battery_workqueue,
 			   &cw_bat->battery_delay_work,
-			   msecs_to_jiffies(cw_bat->monitor_sec));
+			   msecs_to_jiffies(cw_bat->poll_interval_ms));
 }
 
 static bool cw_battery_valid_time_to_empty(struct cw_battery *cw_bat)
@@ -666,7 +666,7 @@ static int cw2015_parse_properties(struct cw_battery *cw_bat)
 		dev_warn(cw_bat->dev,
 			"No battery-profile found, rolling with current flash contents");
 
-	cw_bat->monitor_sec = CW2015_DEFAULT_MONITOR_MS;
+	cw_bat->poll_interval_ms = CW2015_DEFAULT_POLL_INTERVAL_MS;
 
 	ret = device_property_read_u32_array(dev,
 						"cellwise,monitor-interval-ms",
@@ -674,7 +674,7 @@ static int cw2015_parse_properties(struct cw_battery *cw_bat)
 	if (ret >= 0) {
 		dev_dbg(cw_bat->dev, "Overriding default monitor-interval with %u ms",
 			value);
-		cw_bat->monitor_sec = value;
+		cw_bat->poll_interval_ms = value;
 	}
 
 	return 0;
