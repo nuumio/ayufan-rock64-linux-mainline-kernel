@@ -99,11 +99,6 @@ static int cw_read(struct cw_battery *cw_bat, u8 reg, u8 *val)
 	return ret;
 }
 
-static int cw_write(struct cw_battery *cw_bat, u8 reg, const u8 val)
-{
-	return regmap_write(cw_bat->regmap, reg, val);
-}
-
 static int cw_read_word(struct cw_battery *cw_bat, u8 reg, u16 *val)
 {
 	u8 reg_val[2];
@@ -112,17 +107,6 @@ static int cw_read_word(struct cw_battery *cw_bat, u8 reg, u16 *val)
 	ret = regmap_raw_read(cw_bat->regmap, reg, reg_val, 2);
 	*val = (reg_val[0] << 8) + reg_val[1];
 	return ret;
-}
-
-static int cw_read_bulk(struct cw_battery *cw_bat, u8 reg, u8 *buf, size_t len)
-{
-	return regmap_raw_read(cw_bat->regmap, reg, buf, len);
-}
-
-static int cw_write_bulk(struct cw_battery *cw_bat, u8 reg, u8 const *buf,
-				size_t len)
-{
-	return regmap_raw_write(cw_bat->regmap, reg, buf, len);
 }
 
 int cw_update_config_info(struct cw_battery *cw_bat)
@@ -150,7 +134,7 @@ int cw_update_config_info(struct cw_battery *cw_bat)
 	}
 
 	/* write new battery info */
-	ret = cw_write_bulk(cw_bat, CW2015_REG_BATINFO,
+	ret = regmap_raw_write(cw_bat->regmap, CW2015_REG_BATINFO,
 				cw_bat->bat_config_info,
 				CW2015_SIZE_BATINFO);
 
@@ -160,19 +144,19 @@ int cw_update_config_info(struct cw_battery *cw_bat)
 	reg_val |= CW2015_CONFIG_UPDATE_FLG;	/* set UPDATE_FLAG */
 	reg_val &= ~CW2015_MASK_ATHD;	/* clear alert level */
 	reg_val |= CW2015_ATHD(cw_bat->alert_level);	/* set alert level */
-	ret = cw_write(cw_bat, CW2015_REG_CONFIG, reg_val);
+	ret = regmap_write(cw_bat->regmap, CW2015_REG_CONFIG, reg_val);
 	if (ret < 0)
 		return ret;
 
 	/* reset */
 	reset_val &= ~(CW2015_MODE_RESTART);
 	reg_val = reset_val | CW2015_MODE_RESTART;
-	ret = cw_write(cw_bat, CW2015_REG_MODE, reg_val);
+	ret = regmap_write(cw_bat->regmap, CW2015_REG_MODE, reg_val);
 	if (ret < 0)
 		return ret;
 
 	msleep(20);
-	ret = cw_write(cw_bat, CW2015_REG_MODE, reset_val);
+	ret = regmap_write(cw_bat->regmap, CW2015_REG_MODE, reset_val);
 	if (ret < 0)
 		return ret;
 
@@ -189,7 +173,7 @@ static int cw_init(struct cw_battery *cw_bat)
 
 	if ((reg_val & CW2015_MODE_SLEEP_MASK) == CW2015_MODE_SLEEP) {
 		reg_val = CW2015_MODE_NORMAL;
-		ret = cw_write(cw_bat, CW2015_REG_MODE, reg_val);
+		ret = regmap_write(cw_bat->regmap, CW2015_REG_MODE, reg_val);
 		if (ret < 0)
 			return ret;
 	}
@@ -202,7 +186,7 @@ static int cw_init(struct cw_battery *cw_bat)
 		dev_dbg(cw_bat->dev, "Setting new alert level");
 		reg_val &= ~CW2015_MASK_ATHD;
 		reg_val |= ~CW2015_ATHD(cw_bat->alert_level);
-		ret = cw_write(cw_bat, CW2015_REG_CONFIG, reg_val);
+		ret = regmap_write(cw_bat->regmap, CW2015_REG_CONFIG, reg_val);
 		if (ret < 0)
 			return ret;
 	}
@@ -228,7 +212,7 @@ static int cw_init(struct cw_battery *cw_bat)
 	} else if (cw_bat->bat_config_info) {
 		u8 bat_info[CW2015_SIZE_BATINFO];
 
-		ret = cw_read_bulk(cw_bat, CW2015_REG_BATINFO, bat_info,
+		ret = regmap_raw_read(cw_bat->regmap, CW2015_REG_BATINFO, bat_info,
 					CW2015_SIZE_BATINFO);
 		if (ret < 0)
 			return ret;
@@ -254,7 +238,7 @@ static int cw_init(struct cw_battery *cw_bat)
 
 	if (i >= CW2015_READ_TRIES) {
 		reg_val = CW2015_MODE_SLEEP;
-		ret = cw_write(cw_bat, CW2015_REG_MODE, reg_val);
+		ret = regmap_write(cw_bat->regmap, CW2015_REG_MODE, reg_val);
 		dev_err(cw_bat->dev, "Invalid state of charge indication");
 		return -EIO;
 	}
@@ -269,12 +253,12 @@ static int cw_por(struct cw_battery *cw_bat)
 	unsigned char reset_val;
 
 	reset_val = CW2015_MODE_SLEEP;
-	ret = cw_write(cw_bat, CW2015_REG_MODE, reset_val);
+	ret = regmap_write(cw_bat->regmap, CW2015_REG_MODE, reset_val);
 	if (ret < 0)
 		return ret;
 	reset_val = CW2015_MODE_NORMAL;
 	msleep(20);
-	ret = cw_write(cw_bat, CW2015_REG_MODE, reset_val);
+	ret = regmap_write(cw_bat->regmap, CW2015_REG_MODE, reset_val);
 	if (ret < 0)
 		return ret;
 	ret = cw_init(cw_bat);
