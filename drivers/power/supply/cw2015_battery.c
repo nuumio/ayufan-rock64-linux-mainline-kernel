@@ -74,12 +74,14 @@ struct cw_battery {
 	bool resumed;
 	bool charger_attached;
 	bool battery_changed;
+
 	int capacity;
 	int voltage;
 	int status;
 	int time_to_empty;
-	u32 poll_interval_ms;
 	int charge_count;
+
+	u32 poll_interval_ms;
 	u8 alert_level;
 };
 
