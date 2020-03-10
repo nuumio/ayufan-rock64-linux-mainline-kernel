@@ -320,7 +320,8 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 				     discharging_loop *
 				     (cw_bat->poll_interval_ms / 1000)) /
 				     (CW2015_BAT_DOWN_MAX_CHANGE_MS / 1000);
-			dev_dbg(cw_bat->dev, "Estimated capacity lost during sleep: %d",
+			dev_dbg(cw_bat->dev,
+				"Estimated capacity lost during sleep: %d",
 				sleep_cap);
 
 			if (cw_capacity >= cw_bat->capacity - sleep_cap)
