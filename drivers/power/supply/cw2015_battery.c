@@ -102,12 +102,6 @@ int cw_update_profile(struct cw_battery *cw_bat)
 	unsigned int reg_val;
 	u8 reset_val;
 
-	if (!cw_bat->bat_profile) {
-		dev_err(cw_bat->dev,
-			"No battery config info provided, can't update flash contents");
-		return -EINVAL;
-	}
-
 	/* make sure gauge is not in sleep mode */
 	ret = regmap_read(cw_bat->regmap, CW2015_REG_MODE, &reg_val);
 	if (ret)
