@@ -204,8 +204,8 @@ static int cw_init(struct cw_battery *cw_bat)
 	} else if (cw_bat->bat_profile) {
 		u8 bat_info[CW2015_SIZE_BATINFO];
 
-		ret = regmap_raw_read(cw_bat->regmap, CW2015_REG_BATINFO, bat_info,
-					CW2015_SIZE_BATINFO);
+		ret = regmap_raw_read(cw_bat->regmap, CW2015_REG_BATINFO,
+					bat_info, CW2015_SIZE_BATINFO);
 		if (ret)
 			return ret;
 
@@ -393,7 +393,8 @@ static int cw_get_voltage(struct cw_battery *cw_bat)
 	 */
 	voltage_mv = avg * 312 / 1024;
 
-	dev_dbg(cw_bat->dev, "Read voltage: %d mV, raw=0x%04x\n", voltage_mv, reg_val);
+	dev_dbg(cw_bat->dev, "Read voltage: %d mV, raw=0x%04x\n",
+		voltage_mv, reg_val);
 	return voltage_mv;
 }
 
@@ -431,7 +432,8 @@ static void cw_update_capacity(struct cw_battery *cw_bat)
 
 	capacity = cw_get_capacity(cw_bat);
 	if (capacity < 0)
-		dev_err(cw_bat->dev, "Failed to get SoC from gauge: %d", capacity);
+		dev_err(cw_bat->dev, "Failed to get SoC from gauge: %d",
+			capacity);
 	else if (capacity > 100)
 		dev_err(cw_bat->dev, "Got invalid SoC from gauge: %d %%",
 			capacity);
