@@ -394,7 +394,7 @@ static int cw_get_voltage(struct cw_battery *cw_bat)
 
 		avg += reg_val;
 	}
-	avg /= 3;
+	avg /= CW2015_AVERAGING_SAMPLES;
 
 	voltage = avg * 312 / 1024;
 
