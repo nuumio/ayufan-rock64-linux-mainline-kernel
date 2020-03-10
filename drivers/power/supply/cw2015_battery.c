@@ -69,8 +69,7 @@ struct cw_battery {
 	struct power_supply_battery_info battery;
 	u8 *bat_profile;
 
-	struct timespec64 suspend_time_before;
-	struct timespec64 after;
+	struct timespec64 time_suspend;
 
 	bool resumed;
 	bool charger_attached;
@@ -316,7 +315,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 	    (cw_capacity <= cw_bat->capacity) &&
 	    (cw_capacity >= 90) && (jump_flag == 1)) {
 		if (cw_bat->resumed) {
-			sleep_cap = (cw_bat->after.tv_sec +
+			sleep_cap = (cw_bat->time_suspend.tv_sec +
 				     discharging_loop *
 				     (cw_bat->poll_interval_ms / 1000)) /
 				     (CW2015_BAT_DOWN_MAX_CHANGE_MS / 1000);
@@ -329,7 +328,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 
 			if (!sleep_cap)
 				discharging_loop = discharging_loop +
-					1 + cw_bat->after.tv_sec /
+					1 + cw_bat->time_suspend.tv_sec /
 					(cw_bat->poll_interval_ms / 1000);
 			else
 				discharging_loop = 0;
@@ -778,7 +777,7 @@ static int __maybe_unused cw_bat_suspend(struct device *dev)
 	struct i2c_client *client = to_i2c_client(dev);
 	struct cw_battery *cw_bat = i2c_get_clientdata(client);
 
-	ktime_get_boottime_ts64(&cw_bat->suspend_time_before);
+	ktime_get_boottime_ts64(&cw_bat->time_suspend);
 	cancel_delayed_work_sync(&cw_bat->battery_delay_work);
 	return 0;
 }
@@ -787,13 +786,13 @@ static int __maybe_unused cw_bat_resume(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct cw_battery *cw_bat = i2c_get_clientdata(client);
+	struct timespec64 now;
 
 	cw_bat->resumed = true;
-	ktime_get_boottime_ts64(&cw_bat->after);
-	cw_bat->after = timespec64_sub(cw_bat->after,
-				     cw_bat->suspend_time_before);
+	ktime_get_boottime_ts64(&now);
+	cw_bat->time_suspend = timespec64_sub(now, cw_bat->time_suspend);
 	queue_delayed_work(cw_bat->battery_workqueue,
-			   &cw_bat->battery_delay_work, msecs_to_jiffies(2));
+			   &cw_bat->battery_delay_work, 0);
 	return 0;
 }
 
