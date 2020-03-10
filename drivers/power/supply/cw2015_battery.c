@@ -74,14 +74,14 @@ struct cw_battery {
 	struct timespec64 after;
 	int suspend_resume_mark;
 #endif
-	int charger_mode;
+	bool charger_attached;
+	bool battery_changed;
 	int capacity;
 	int voltage;
 	int status;
 	int time_to_empty;
 	int alt;
 	u32 poll_interval_ms;
-	int bat_change;
 	int charge_count;
 	u8 alert_level;
 };
@@ -289,17 +289,17 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 	reset_loop = 0;
 
 	/* case 1 : aviod swing */
-	if (((cw_bat->charger_mode > 0) &&
+	if ((cw_bat->charger_attached &&
 	     (cw_capacity <= cw_bat->capacity - 1) &&
 	     (cw_capacity > cw_bat->capacity - 9)) ||
-	    ((cw_bat->charger_mode == 0) &&
+	    (!cw_bat->charger_attached &&
 	     (cw_capacity == (cw_bat->capacity + 1)))) {
 		if (!(cw_capacity == 0 && cw_bat->capacity <= 2))
 			cw_capacity = cw_bat->capacity;
 	}
 
 	/* case 2 : ensure battery reaches full state */
-	if ((cw_bat->charger_mode > 0) &&
+	if (cw_bat->charger_attached &&
 	    (cw_capacity >= 95) && (cw_capacity <= cw_bat->capacity)) {
 		charging_loop++;
 		if (charging_loop >
@@ -313,7 +313,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 	}
 
 	/* case 3 : prevent battery level from jumping to CW_BAT */
-	if ((cw_bat->charger_mode == 0) &&
+	if (!cw_bat->charger_attached &&
 	    (cw_capacity <= cw_bat->capacity) &&
 	    (cw_capacity >= 90) && (jump_flag == 1)) {
 #ifdef CONFIG_PM
@@ -352,7 +352,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 	}
 
 	/* case 4 : reset gauge if stuck at 0% while charging */
-	if ((cw_bat->charger_mode > 0) && (cw_capacity == 0)) {
+	if (cw_bat->charger_attached && (cw_capacity == 0)) {
 		charging_5_loop++;
 		if (charging_5_loop >
 		    CW2015_BAT_CHARGING_ZERO_MS / cw_bat->poll_interval_ms) {
@@ -409,17 +409,22 @@ static int cw_get_time_to_empty(struct cw_battery *cw_bat)
 
 static void cw_update_charge_status(struct cw_battery *cw_bat)
 {
-	int charger_mode;
+	int ret;
 
-	charger_mode = power_supply_am_i_supplied(cw_bat->rk_bat);
-	if (charger_mode < 0) {
+	ret = power_supply_am_i_supplied(cw_bat->rk_bat);
+	if (ret < 0) {
 		dev_warn(cw_bat->dev, "Failed to get supply state: %d",
-				charger_mode);
-	} else if (cw_bat->charger_mode != charger_mode) {
-		cw_bat->charger_mode = charger_mode;
-		cw_bat->bat_change = 1;
-		if (charger_mode)
-			cw_bat->charge_count++;
+				ret);
+	} else {
+		bool charger_attached;
+
+		charger_attached = !!ret;
+		if (cw_bat->charger_attached != charger_attached) {
+			cw_bat->charger_attached = charger_attached;
+			cw_bat->battery_changed = true;
+			if (charger_attached)
+				cw_bat->charge_count++;
+		}
 	}
 }
 
@@ -436,11 +441,11 @@ static void cw_update_capacity(struct cw_battery *cw_bat)
 			capacity);
 	else if (cw_bat->capacity != capacity) {
 		cw_bat->capacity = capacity;
-		cw_bat->bat_change = 1;
+		cw_bat->battery_changed = true;
 	}
 }
 
-static void cw_update_vol(struct cw_battery *cw_bat)
+static void cw_update_voltage(struct cw_battery *cw_bat)
 {
 	int voltage_mv;
 
@@ -456,7 +461,7 @@ static void cw_update_status(struct cw_battery *cw_bat)
 {
 	int status;
 
-	if (cw_bat->charger_mode > 0) {
+	if (cw_bat->charger_attached) {
 		if (cw_bat->capacity >= 100)
 			status = POWER_SUPPLY_STATUS_FULL;
 		else
@@ -467,7 +472,7 @@ static void cw_update_status(struct cw_battery *cw_bat)
 
 	if (cw_bat->status != status) {
 		cw_bat->status = status;
-		cw_bat->bat_change = 1;
+		cw_bat->battery_changed = true;
 	}
 }
 
@@ -481,7 +486,7 @@ static void cw_update_time_to_empty(struct cw_battery *cw_bat)
 			time_to_empty);
 	else if (cw_bat->time_to_empty != time_to_empty) {
 		cw_bat->time_to_empty = time_to_empty;
-		cw_bat->bat_change = 1;
+		cw_bat->battery_changed = true;
 	}
 }
 
@@ -508,12 +513,12 @@ static void cw_bat_work(struct work_struct *work)
 			}
 		}
 		cw_update_capacity(cw_bat);
-		cw_update_vol(cw_bat);
+		cw_update_voltage(cw_bat);
 		cw_update_charge_status(cw_bat);
 		cw_update_status(cw_bat);
 		cw_update_time_to_empty(cw_bat);
 	}
-	dev_dbg(cw_bat->dev, "charger_mode = %d", cw_bat->charger_mode);
+	dev_dbg(cw_bat->dev, "charger_attached = %d", cw_bat->charger_attached);
 	dev_dbg(cw_bat->dev, "status = %d", cw_bat->status);
 	dev_dbg(cw_bat->dev, "capacity = %d", cw_bat->capacity);
 	dev_dbg(cw_bat->dev, "voltage = %d", cw_bat->voltage);
@@ -523,9 +528,9 @@ static void cw_bat_work(struct work_struct *work)
 		cw_bat->suspend_resume_mark = 0;
 #endif
 
-	if (cw_bat->bat_change == 1) {
+	if (cw_bat->battery_changed) {
 		power_supply_changed(cw_bat->rk_bat);
-		cw_bat->bat_change = 0;
+		cw_bat->battery_changed = false;
 	}
 	queue_delayed_work(cw_bat->battery_workqueue,
 			   &cw_bat->battery_delay_work,
@@ -744,8 +749,8 @@ static int cw_bat_probe(struct i2c_client *client,
 	cw_bat->voltage = 0;
 	cw_bat->status = 0;
 	cw_bat->suspend_resume_mark = 0;
-	cw_bat->charger_mode = 0;
-	cw_bat->bat_change = 0;
+	cw_bat->charger_attached = false;
+	cw_bat->battery_changed = false;
 
 	cw_bat->regmap = devm_regmap_init_i2c(client, &cw2015_regmap_config);
 	if (IS_ERR(cw_bat->regmap)) {
