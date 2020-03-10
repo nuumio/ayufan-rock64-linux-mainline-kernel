@@ -88,8 +88,6 @@ struct cw_battery {
 	u8 alert_level;
 };
 
-#define PREFIX "cellwise,"
-
 #define cw_dbg(cw_bat, ...) dev_dbg((cw_bat)->dev, __VA_ARGS__)
 #define cw_info(cw_bat, ...) dev_info((cw_bat)->dev, __VA_ARGS__)
 #define cw_warn(cw_bat, ...) dev_warn((cw_bat)->dev, __VA_ARGS__)
@@ -670,7 +668,7 @@ static int cw2015_parse_dt(struct cw_battery *cw_bat)
 	if (!node)
 		return -ENODEV;
 
-	prop = of_find_property(node, PREFIX"bat-config-info", &length);
+	prop = of_find_property(node, "cellwise,bat-config-info", &length);
 	if (prop) {
 		if (length != CW2015_SIZE_BATINFO) {
 			cw_err(cw_bat, "bat-config-info must be %d bytes",
@@ -686,7 +684,7 @@ static int cw2015_parse_dt(struct cw_battery *cw_bat)
 			return -ENOMEM;
 		}
 
-		ret = of_property_read_u8_array(node, PREFIX"bat-config-info",
+		ret = of_property_read_u8_array(node, "cellwise,bat-config-info",
 						 cw_bat->bat_config_info,
 						 CW2015_SIZE_BATINFO);
 		if (ret < 0)
@@ -697,7 +695,7 @@ static int cw2015_parse_dt(struct cw_battery *cw_bat)
 
 	cw_bat->monitor_sec = CW2015_DEFAULT_MONITOR_MS;
 
-	ret = of_property_read_u32(node, PREFIX"monitor-interval-ms", &value);
+	ret = of_property_read_u32(node, "cellwise,monitor-interval-ms", &value);
 	if (ret >= 0) {
 		cw_dbg(cw_bat, "Overriding default monitor-interval with %u ms",
 			value);
@@ -868,7 +866,7 @@ static const struct i2c_device_id cw_bat_id_table[] = {
 };
 
 static const struct of_device_id cw2015_of_match[] = {
-	{ .compatible = PREFIX"cw2015" },
+	{ .compatible = "cellwise,cw2015" },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, cw2015_of_match);
