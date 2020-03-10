@@ -356,11 +356,11 @@ static void cw_update_charge_status(struct cw_battery *cw_bat)
 
 		charger_attached = !!ret;
 		if (cw_bat->charger_attached != charger_attached) {
-			cw_bat->charger_attached = charger_attached;
 			cw_bat->battery_changed = true;
 			if (charger_attached)
 				cw_bat->charge_count++;
 		}
+		cw_bat->charger_attached = charger_attached;
 	}
 }
 
@@ -452,10 +452,10 @@ static void cw_bat_work(struct work_struct *work)
 	dev_dbg(cw_bat->dev, "capacity = %d", cw_bat->capacity);
 	dev_dbg(cw_bat->dev, "voltage = %d", cw_bat->voltage);
 
-	if (cw_bat->battery_changed) {
+	if (cw_bat->battery_changed)
 		power_supply_changed(cw_bat->rk_bat);
-		cw_bat->battery_changed = false;
-	}
+	cw_bat->battery_changed = false;
+
 	queue_delayed_work(cw_bat->battery_workqueue,
 			   &cw_bat->battery_delay_work,
 			   msecs_to_jiffies(cw_bat->poll_interval_ms));
@@ -486,7 +486,7 @@ static int cw_battery_get_property(struct power_supply *psy,
 		break;
 
 	case POWER_SUPPLY_PROP_PRESENT:
-		val->intval = cw_bat->voltage <= 0 ? 0 : 1;
+		val->intval = !!cw_bat->voltage;
 		break;
 
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
