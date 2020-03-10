@@ -791,8 +791,6 @@ static int cw_bat_probe(struct i2c_client *client,
 	INIT_DELAYED_WORK(&cw_bat->battery_delay_work, cw_bat_work);
 	queue_delayed_work(cw_bat->battery_workqueue,
 			   &cw_bat->battery_delay_work, msecs_to_jiffies(10));
-
-	dev_dbg(cw_bat->dev, "cw2015/cw2013 driver probe success");
 	return 0;
 }
 
@@ -821,17 +819,12 @@ static int cw_bat_resume(struct device *dev)
 	return 0;
 }
 
-static const struct dev_pm_ops cw_bat_pm_ops = {
-	.suspend  = cw_bat_suspend,
-	.resume   = cw_bat_resume,
-};
-#endif
+SIMPLE_DEV_PM_OPS(cw_bat_pm_ops, cw_bat_suspend, cw_bat_resume);
 
 static int cw_bat_remove(struct i2c_client *client)
 {
 	struct cw_battery *cw_bat = i2c_get_clientdata(client);
 
-	dev_dbg(cw_bat->dev, "Removing device");
 	cancel_delayed_work(&cw_bat->battery_delay_work);
 	power_supply_put_battery_info(cw_bat->rk_bat, &cw_bat->battery);
 	return 0;
