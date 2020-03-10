@@ -89,17 +89,6 @@ struct cw_battery {
 	u8 alert_level;
 };
 
-
-static int cw_read(struct cw_battery *cw_bat, u8 reg, u8 *val)
-{
-	u32 tmp;
-	int ret;
-
-	ret = regmap_read(cw_bat->regmap, reg, &tmp);
-	*val = tmp;
-	return ret;
-}
-
 static int cw_read_word(struct cw_battery *cw_bat, u8 reg, u16 *val)
 {
 	u8 reg_val[2];
@@ -113,7 +102,7 @@ static int cw_read_word(struct cw_battery *cw_bat, u8 reg, u16 *val)
 int cw_update_profile(struct cw_battery *cw_bat)
 {
 	int ret;
-	u8 reg_val;
+	unsigned int reg_val;
 	u8 reset_val;
 
 	if (!cw_bat->bat_profile) {
@@ -123,7 +112,7 @@ int cw_update_profile(struct cw_battery *cw_bat)
 	}
 
 	/* make sure gauge is not in sleep mode */
-	ret = cw_read(cw_bat, CW2015_REG_MODE, &reg_val);
+	ret = regmap_read(cw_bat->regmap, CW2015_REG_MODE, &reg_val);
 	if (ret)
 		return ret;
 
@@ -172,7 +161,7 @@ static int cw_init(struct cw_battery *cw_bat)
 {
 	int ret;
 	int i;
-	u8 reg_val = CW2015_MODE_SLEEP;
+	unsigned int reg_val = CW2015_MODE_SLEEP;
 
 	if ((reg_val & CW2015_MODE_SLEEP_MASK) == CW2015_MODE_SLEEP) {
 		reg_val = CW2015_MODE_NORMAL;
@@ -181,7 +170,7 @@ static int cw_init(struct cw_battery *cw_bat)
 			return ret;
 	}
 
-	ret = cw_read(cw_bat, CW2015_REG_CONFIG, &reg_val);
+	ret = regmap_read(cw_bat->regmap, CW2015_REG_CONFIG, &reg_val);
 	if (ret)
 		return ret;
 
@@ -194,7 +183,7 @@ static int cw_init(struct cw_battery *cw_bat)
 			return ret;
 	}
 
-	ret = cw_read(cw_bat, CW2015_REG_CONFIG, &reg_val);
+	ret = regmap_read(cw_bat->regmap, CW2015_REG_CONFIG, &reg_val);
 	if (ret)
 		return ret;
 
@@ -231,7 +220,7 @@ static int cw_init(struct cw_battery *cw_bat)
 		dev_warn(cw_bat->dev, "Can't check current battery config, no config provided");
 
 	for (i = 0; i < CW2015_READ_TRIES; i++) {
-		ret = cw_read(cw_bat, CW2015_REG_SOC, &reg_val);
+		ret = regmap_read(cw_bat->regmap, CW2015_REG_SOC, &reg_val);
 		if (ret)
 			return ret;
 		/* SoC must not be more than 100% */
@@ -275,7 +264,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 {
 	int cw_capacity;
 	int ret;
-	u8 reg_val;
+	unsigned int reg_val;
 
 	static int reset_loop;
 	static int charging_loop;
@@ -284,7 +273,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 	static int charging_5_loop;
 	int sleep_cap;
 
-	ret = cw_read(cw_bat, CW2015_REG_SOC, &reg_val);
+	ret = regmap_read(cw_bat->regmap, CW2015_REG_SOC, &reg_val);
 	if (ret)
 		return ret;
 
@@ -502,14 +491,14 @@ static void cw_bat_work(struct work_struct *work)
 	struct delayed_work *delay_work;
 	struct cw_battery *cw_bat;
 	int ret;
-	u8 reg_val;
+	unsigned int reg_val;
 	int i = 0;
 
 	delay_work = container_of(work, struct delayed_work, work);
 	cw_bat =
 		container_of(delay_work, struct cw_battery, battery_delay_work);
 
-	ret = cw_read(cw_bat, CW2015_REG_MODE, &reg_val);
+	ret = regmap_read(cw_bat->regmap, CW2015_REG_MODE, &reg_val);
 	if (ret) {
 		dev_err(cw_bat->dev, "Failed to read mode from gauge: %d", ret);
 	} else {
