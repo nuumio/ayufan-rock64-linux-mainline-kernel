@@ -16,6 +16,7 @@
 #include <linux/gpio/consumer.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
 #include <linux/regmap.h>
@@ -638,7 +639,6 @@ static const struct power_supply_desc cw2015_bat_desc = {
 	.get_property	= cw_battery_get_property,
 };
 
-#ifdef CONFIG_OF
 static int cw2015_parse_dt(struct cw_battery *cw_bat)
 {
 	struct device *dev = cw_bat->dev;
@@ -687,12 +687,6 @@ static int cw2015_parse_dt(struct cw_battery *cw_bat)
 
 	return 0;
 }
-#else
-static int cw2015_parse_dt(struct cw_battery *cw_bat)
-{
-	return -ENODEV;
-}
-#endif
 
 static const struct regmap_range regmap_ranges_rd_yes[] = {
 	regmap_reg_range(CW2015_REG_VERSION, CW2015_REG_VERSION),
