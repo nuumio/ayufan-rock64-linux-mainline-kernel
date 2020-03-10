@@ -69,11 +69,10 @@ struct cw_battery {
 	struct power_supply_battery_info battery;
 	u8 *bat_profile;
 
-#ifdef CONFIG_PM
 	struct timespec64 suspend_time_before;
 	struct timespec64 after;
-	int suspend_resume_mark;
-#endif
+
+	bool resumed;
 	bool charger_attached;
 	bool battery_changed;
 	int capacity;
@@ -316,9 +315,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 	if (!cw_bat->charger_attached &&
 	    (cw_capacity <= cw_bat->capacity) &&
 	    (cw_capacity >= 90) && (jump_flag == 1)) {
-#ifdef CONFIG_PM
-		if (cw_bat->suspend_resume_mark == 1) {
-			cw_bat->suspend_resume_mark = 0;
+		if (cw_bat->resumed) {
 			sleep_cap = (cw_bat->after.tv_sec +
 				     discharging_loop *
 				     (cw_bat->poll_interval_ms / 1000)) /
@@ -337,7 +334,6 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 				discharging_loop = 0;
 			return cw_bat->capacity - sleep_cap;
 		}
-#endif
 		discharging_loop++;
 		if (discharging_loop >
 		    (CW2015_BAT_DOWN_MAX_CHANGE_MS / cw_bat->poll_interval_ms)) {
@@ -361,10 +357,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 		}
 	} else
 		charging_5_loop = 0;
-#ifdef CONFIG_PM
-	if (cw_bat->suspend_resume_mark == 1)
-		cw_bat->suspend_resume_mark = 0;
-#endif
+
 	return cw_capacity;
 }
 
@@ -523,10 +516,7 @@ static void cw_bat_work(struct work_struct *work)
 	dev_dbg(cw_bat->dev, "capacity = %d", cw_bat->capacity);
 	dev_dbg(cw_bat->dev, "voltage = %d", cw_bat->voltage);
 
-#ifdef CONFIG_PM
-	if (cw_bat->suspend_resume_mark == 1)
-		cw_bat->suspend_resume_mark = 0;
-#endif
+	cw_bat->resumed = false;
 
 	if (cw_bat->battery_changed) {
 		power_supply_changed(cw_bat->rk_bat);
@@ -803,7 +793,7 @@ static int __maybe_unused cw_bat_resume(struct device *dev)
 	struct i2c_client *client = to_i2c_client(dev);
 	struct cw_battery *cw_bat = i2c_get_clientdata(client);
 
-	cw_bat->suspend_resume_mark = 1;
+	cw_bat->resumed = true;
 	ktime_get_boottime_ts64(&cw_bat->after);
 	cw_bat->after = timespec64_sub(cw_bat->after,
 				     cw_bat->suspend_time_before);
