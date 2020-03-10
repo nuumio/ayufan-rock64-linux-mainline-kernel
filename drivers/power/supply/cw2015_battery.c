@@ -74,6 +74,7 @@ struct cw_battery {
 	bool resumed;
 	bool charger_attached;
 	bool battery_changed;
+	bool capacity_jumped;
 
 	int capacity;
 	int voltage;
@@ -266,7 +267,6 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 
 	static int charging_loop;
 	static int discharging_loop;
-	static int jump_flag;
 	static int charging_5_loop;
 	int sleep_cap;
 
@@ -307,7 +307,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 			cw_capacity = (cw_bat->capacity + 1) <= 100 ?
 				      (cw_bat->capacity + 1) : 100;
 			charging_loop = 0;
-			jump_flag = 1;
+			cw_bat->capacity_jumped = true;
 		} else
 			cw_capacity = cw_bat->capacity;
 	}
@@ -315,7 +315,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 	/* case 3 : prevent battery level from jumping to CW_BAT */
 	if (!cw_bat->charger_attached &&
 	    (cw_capacity <= cw_bat->capacity) &&
-	    (cw_capacity >= 90) && (jump_flag == 1)) {
+	    (cw_capacity >= 90) && cw_bat->capacity_jumped) {
 		if (cw_bat->resumed) {
 			sleep_cap = (cw_bat->time_suspend.tv_sec +
 				     discharging_loop *
@@ -340,7 +340,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 		if (discharging_loop >
 		    (CW2015_BAT_DOWN_MAX_CHANGE_MS / cw_bat->poll_interval_ms)) {
 			if (cw_capacity >= cw_bat->capacity - 1)
-				jump_flag = 0;
+				cw_bat->capacity_jumped = false;
 			else
 				cw_capacity = cw_bat->capacity - 1;
 
