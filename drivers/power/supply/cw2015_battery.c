@@ -433,10 +433,9 @@ static void cw_bat_work(struct work_struct *work)
 	unsigned int reg_val;
 	int i = 0;
 
-	delay_work = container_of(work, struct delayed_work, work);
+	delay_work = to_delayed_work(work);
 	cw_bat =
 		container_of(delay_work, struct cw_battery, battery_delay_work);
-
 	ret = regmap_read(cw_bat->regmap, CW2015_REG_MODE, &reg_val);
 	if (ret) {
 		dev_err(cw_bat->dev, "Failed to read mode from gauge: %d", ret);
