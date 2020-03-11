@@ -211,8 +211,7 @@ static int cw_init(struct cw_battery *cw_bat)
 			return ret;
 		}
 
-		if (memcmp(bat_info, cw_bat->bat_profile,
-				CW2015_SIZE_BATINFO)) {
+		if (memcmp(bat_info, cw_bat->bat_profile, CW2015_SIZE_BATINFO)) {
 			dev_warn(cw_bat->dev, "Replacing stored battery profile");
 			ret = cw_update_profile(cw_bat);
 			if (ret)
@@ -264,8 +263,8 @@ static int cw_get_soc(struct cw_battery *cw_bat)
 		return ret;
 
 	if (soc > 100) {
-		int max_error_cycles = CW2015_BAT_SOC_ERROR_MS /
-					cw_bat->poll_interval_ms;
+		int max_error_cycles =
+			CW2015_BAT_SOC_ERROR_MS / cw_bat->poll_interval_ms;
 
 		dev_err(cw_bat->dev, "Invalid SoC %d%%", soc);
 		cw_bat->read_errors++;
@@ -280,10 +279,9 @@ static int cw_get_soc(struct cw_battery *cw_bat)
 	cw_bat->read_errors = 0;
 
 	/* Reset gauge if stuck while charging */
-	if (cw_bat->status == POWER_SUPPLY_STATUS_CHARGING &&
-			soc == cw_bat->soc) {
-		int max_stuck_cycles = CW2015_BAT_CHARGING_STUCK_MS /
-					cw_bat->poll_interval_ms;
+	if (cw_bat->status == POWER_SUPPLY_STATUS_CHARGING && soc == cw_bat->soc) {
+		int max_stuck_cycles =
+			CW2015_BAT_CHARGING_STUCK_MS / cw_bat->poll_interval_ms;
 
 		cw_bat->charge_stuck_cnt++;
 		if (cw_bat->charge_stuck_cnt > max_stuck_cycles) {
@@ -297,16 +295,12 @@ static int cw_get_soc(struct cw_battery *cw_bat)
 	}
 
 	/* Ignore voltage dips during charge */
-	if (cw_bat->charger_attached &&
-			HYSTERESIS(soc, cw_bat->soc, 0, 3)) {
+	if (cw_bat->charger_attached && HYSTERESIS(soc, cw_bat->soc, 0, 3))
 		soc = cw_bat->soc;
-	}
 
 	/* Ignore voltage spikes during discharge */
-	if (!cw_bat->charger_attached &&
-			HYSTERESIS(soc, cw_bat->soc, 3, 0)) {
+	if (!cw_bat->charger_attached && HYSTERESIS(soc, cw_bat->soc, 3, 0))
 		soc = cw_bat->soc;
-	}
 
 	return soc;
 }
@@ -436,8 +430,7 @@ static void cw_bat_work(struct work_struct *work)
 	int i = 0;
 
 	delay_work = to_delayed_work(work);
-	cw_bat =
-		container_of(delay_work, struct cw_battery, battery_delay_work);
+	cw_bat = container_of(delay_work, struct cw_battery, battery_delay_work);
 	ret = regmap_read(cw_bat->regmap, CW2015_REG_MODE, &reg_val);
 	if (ret) {
 		dev_err(cw_bat->dev, "Failed to read mode from gauge: %d", ret);
@@ -470,7 +463,7 @@ static void cw_bat_work(struct work_struct *work)
 
 static bool cw_battery_valid_time_to_empty(struct cw_battery *cw_bat)
 {
-	return cw_bat->time_to_empty > 0 &&
+	return	cw_bat->time_to_empty > 0 &&
 		cw_bat->time_to_empty < CW2015_MASK_SOC &&
 		cw_bat->status == POWER_SUPPLY_STATUS_DISCHARGING;
 }
@@ -581,8 +574,7 @@ static int cw2015_parse_properties(struct cw_battery *cw_bat)
 			return -EINVAL;
 		}
 
-		cw_bat->bat_profile =
-			devm_kzalloc(dev, CW2015_SIZE_BATINFO, GFP_KERNEL);
+		cw_bat->bat_profile = devm_kzalloc(dev, length, GFP_KERNEL);
 		if (!cw_bat->bat_profile) {
 			dev_err(cw_bat->dev,
 				"Failed to allocate memory for battery config info");
@@ -592,7 +584,7 @@ static int cw2015_parse_properties(struct cw_battery *cw_bat)
 		ret = device_property_read_u8_array(dev,
 						"cellwise,battery-profile",
 						cw_bat->bat_profile,
-						CW2015_SIZE_BATINFO);
+						length);
 		if (ret)
 			return ret;
 	} else {
@@ -618,7 +610,7 @@ static const struct regmap_range regmap_ranges_rd_yes[] = {
 	regmap_reg_range(CW2015_REG_VCELL, CW2015_REG_CONFIG),
 	regmap_reg_range(CW2015_REG_MODE, CW2015_REG_MODE),
 	regmap_reg_range(CW2015_REG_BATINFO,
-				CW2015_REG_BATINFO + CW2015_SIZE_BATINFO - 1),
+			CW2015_REG_BATINFO + CW2015_SIZE_BATINFO - 1),
 };
 
 static const struct regmap_access_table regmap_rd_table = {
@@ -697,7 +689,7 @@ static int cw_bat_probe(struct i2c_client *client,
 		&cw2015_bat_desc, &psy_cfg);
 	if (IS_ERR(cw_bat->rk_bat)) {
 		dev_err(cw_bat->dev, "Failed to register power supply");
-		return -1;
+		return PTR_ERR(cw_bat->rk_bat);
 	}
 
 	ret = power_supply_get_battery_info(cw_bat->rk_bat, &cw_bat->battery);
