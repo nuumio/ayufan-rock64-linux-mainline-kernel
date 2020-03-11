@@ -86,12 +86,15 @@ struct cw_battery {
 
 static int cw_read_word(struct cw_battery *cw_bat, u8 reg, u16 *val)
 {
-	u8 reg_val[2];
+	__be16 value;
 	int ret;
 
-	ret = regmap_raw_read(cw_bat->regmap, reg, reg_val, 2);
-	*val = (reg_val[0] << 8) + reg_val[1];
-	return ret;
+	ret = regmap_bulk_read(cw_bat->regmap, reg, &value, sizeof(value));
+	if (ret)
+		return ret;
+
+	*val = be16_to_cpu(value);
+	return 0;
 }
 
 int cw_update_profile(struct cw_battery *cw_bat)
