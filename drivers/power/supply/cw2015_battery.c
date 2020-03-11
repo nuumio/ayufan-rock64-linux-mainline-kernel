@@ -68,8 +68,6 @@ struct cw_battery {
 	struct power_supply_battery_info battery;
 	u8 *bat_profile;
 
-	struct timespec64 time_suspend;
-
 	bool charger_attached;
 	bool battery_changed;
 
