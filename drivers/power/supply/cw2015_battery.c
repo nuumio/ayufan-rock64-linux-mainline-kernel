@@ -237,7 +237,7 @@ static int cw_init(struct cw_battery *cw_bat)
 	return 0;
 }
 
-static int cw_por(struct cw_battery *cw_bat)
+static int cw_power_on_reset(struct cw_battery *cw_bat)
 {
 	int ret;
 	unsigned char reset_val;
@@ -246,11 +246,15 @@ static int cw_por(struct cw_battery *cw_bat)
 	ret = regmap_write(cw_bat->regmap, CW2015_REG_MODE, reset_val);
 	if (ret)
 		return ret;
-	reset_val = CW2015_MODE_NORMAL;
+
+	/* wait for gauge to enter sleep */
 	msleep(20);
+
+	reset_val = CW2015_MODE_NORMAL;
 	ret = regmap_write(cw_bat->regmap, CW2015_REG_MODE, reset_val);
 	if (ret)
 		return ret;
+
 	ret = cw_init(cw_bat);
 	if (ret)
 		return ret;
@@ -276,7 +280,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 			(CW2015_BAT_SOC_ERROR_MS / cw_bat->poll_interval_ms)) {
 			dev_warn(cw_bat->dev,
 				"Too many invalid SoC reports, resetting gauge");
-			cw_por(cw_bat);
+			cw_power_on_reset(cw_bat);
 			cw_bat->read_errors = 0;
 		}
 		return cw_bat->capacity;
@@ -291,7 +295,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 			CW2015_BAT_CHARGING_STUCK_MS / cw_bat->poll_interval_ms) {
 			dev_warn(cw_bat->dev,
 				"SoC stuck @%u%%, resetting gauge", capacity);
-			cw_por(cw_bat);
+			cw_power_on_reset(cw_bat);
 			cw_bat->charge_stuck_cnt = 0;
 		}
 	} else {
@@ -446,7 +450,7 @@ static void cw_bat_work(struct work_struct *work)
 	} else {
 		if ((reg_val & CW2015_MODE_SLEEP_MASK) == CW2015_MODE_SLEEP) {
 			for (i = 0; i < CW2015_RESET_TRIES; i++) {
-				if (cw_por(cw_bat) == 0)
+				if (cw_power_on_reset(cw_bat) == 0)
 					break;
 			}
 		}
