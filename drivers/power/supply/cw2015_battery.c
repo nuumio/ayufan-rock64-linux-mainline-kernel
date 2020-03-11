@@ -49,9 +49,9 @@
 #define CW2015_MASK_ATHD		GENMASK(7, 3)
 #define CW2015_MASK_SOC			GENMASK(12, 0)
 
-/* reset gauage of no valid state of charge could be polled for 40s */
+/* reset gauge of no valid state of charge could be polled for 40s */
 #define CW2015_BAT_SOC_ERROR_MS		(40 * MSEC_PER_SEC)
-/* reset gauage if state of charge stuck for half an hour during charging */
+/* reset gauge if state of charge stuck for half an hour during charging */
 #define CW2015_BAT_CHARGING_STUCK_MS	(1800 * MSEC_PER_SEC)
 
 /* poll interval from CellWise GPL Android driver example */
