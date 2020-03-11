@@ -4,7 +4,7 @@
 $id: http://devicetree.org/schemas/power/supply/cw2015_battery.yaml#
 $schema: http://devicetree.org/meta-schemas/core.yaml#
 
-title: Battery driver for CW2015 shuntless fule gauge by CellWise.
+title: Battery driver for CW2015 shuntless fuel gauge by CellWise.
 
 maintainers:
   - Tobias Schramm <t.schramm@manjaro.org>
