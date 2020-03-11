@@ -98,7 +98,7 @@ static int cw_read_word(struct cw_battery *cw_bat, u8 reg, u16 *val)
 
 int cw_update_profile(struct cw_battery *cw_bat)
 {
-	int ret;
+	int ret, i;
 	unsigned int reg_val;
 	u8 reset_val;
 
@@ -136,13 +136,34 @@ int cw_update_profile(struct cw_battery *cw_bat)
 	if (ret)
 		return ret;
 
-	/* wait for gauge to apply battery profile */
+	/* wait for gauge to reset */
 	msleep(20);
 
 	/* clear reset flag */
 	ret = regmap_write(cw_bat->regmap, CW2015_REG_MODE, reset_val);
 	if (ret)
 		return ret;
+
+	/* wait for gauge to become ready */
+	for (i = 0; i < CW2015_READ_TRIES; i++) {
+		ret = regmap_read(cw_bat->regmap, CW2015_REG_SOC, &reg_val);
+		if (ret)
+			return ret;
+		/* SoC must not be more than 100% */
+		else if (reg_val <= 100)
+			break;
+
+		msleep(100);
+	}
+
+	if (i >= CW2015_READ_TRIES) {
+		reg_val = CW2015_MODE_SLEEP;
+		regmap_write(cw_bat->regmap, CW2015_REG_MODE, reg_val);
+		dev_err(cw_bat->dev,
+			"Gauge did not get ready after profile upload");
+		return -ETIMEDOUT;
+	}
+
 
 	dev_dbg(cw_bat->dev, "Battery profile updated");
 	return 0;
@@ -151,7 +172,6 @@ int cw_update_profile(struct cw_battery *cw_bat)
 static int cw_init(struct cw_battery *cw_bat)
 {
 	int ret;
-	int i;
 	unsigned int reg_val = CW2015_MODE_SLEEP;
 
 	if ((reg_val & CW2015_MODE_SLEEP_MASK) == CW2015_MODE_SLEEP) {
@@ -207,25 +227,9 @@ static int cw_init(struct cw_battery *cw_bat)
 			if (ret)
 				return ret;
 		}
-	} else
+	} else {
 		dev_warn(cw_bat->dev,
 			"Can't check current battery config, no config provided");
-
-	for (i = 0; i < CW2015_READ_TRIES; i++) {
-		ret = regmap_read(cw_bat->regmap, CW2015_REG_SOC, &reg_val);
-		if (ret)
-			return ret;
-		/* SoC must not be more than 100% */
-		else if (reg_val <= 100)
-			break;
-		msleep(120);
-	}
-
-	if (i >= CW2015_READ_TRIES) {
-		reg_val = CW2015_MODE_SLEEP;
-		ret = regmap_write(cw_bat->regmap, CW2015_REG_MODE, reg_val);
-		dev_err(cw_bat->dev, "Invalid state of charge indication");
-		return -EIO;
 	}
 
 	dev_dbg(cw_bat->dev, "Battery configured");
