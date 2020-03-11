@@ -72,7 +72,7 @@ struct cw_battery {
 	bool battery_changed;
 
 	int soc;
-	int voltage;
+	int voltage_mv;
 	int status;
 	int time_to_empty;
 	int charge_count;
@@ -404,7 +404,7 @@ static void cw_update_voltage(struct cw_battery *cw_bat)
 		dev_err(cw_bat->dev, "Failed to get voltage from gauge: %d",
 			voltage_mv);
 	else
-		cw_bat->voltage = voltage_mv;
+		cw_bat->voltage_mv = voltage_mv;
 }
 
 static void cw_update_status(struct cw_battery *cw_bat)
@@ -467,7 +467,7 @@ static void cw_bat_work(struct work_struct *work)
 	dev_dbg(cw_bat->dev, "charger_attached = %d", cw_bat->charger_attached);
 	dev_dbg(cw_bat->dev, "status = %d", cw_bat->status);
 	dev_dbg(cw_bat->dev, "soc = %d%%", cw_bat->soc);
-	dev_dbg(cw_bat->dev, "voltage = %d", cw_bat->voltage);
+	dev_dbg(cw_bat->dev, "voltage = %d", cw_bat->voltage_mv);
 
 	if (cw_bat->battery_changed)
 		power_supply_changed(cw_bat->rk_bat);
@@ -503,11 +503,11 @@ static int cw_battery_get_property(struct power_supply *psy,
 		break;
 
 	case POWER_SUPPLY_PROP_PRESENT:
-		val->intval = !!cw_bat->voltage;
+		val->intval = !!cw_bat->voltage_mv;
 		break;
 
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-		val->intval = cw_bat->voltage * 1000;
+		val->intval = cw_bat->voltage_mv * 1000;
 		break;
 
 	case POWER_SUPPLY_PROP_TIME_TO_EMPTY_NOW:
