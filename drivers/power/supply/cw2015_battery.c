@@ -71,7 +71,7 @@ struct cw_battery {
 	bool charger_attached;
 	bool battery_changed;
 
-	int capacity;
+	int soc;
 	int voltage;
 	int status;
 	int time_to_empty;
@@ -264,20 +264,20 @@ static int cw_power_on_reset(struct cw_battery *cw_bat)
 #define HYSTERESIS(current, previous, up, down) \
 	(((current) < (previous) + (up)) && ((current) > (previous) - (down)))
 
-static int cw_get_capacity(struct cw_battery *cw_bat)
+static int cw_get_soc(struct cw_battery *cw_bat)
 {
-	unsigned int capacity;
+	unsigned int soc;
 	int ret;
 
-	ret = regmap_read(cw_bat->regmap, CW2015_REG_SOC, &capacity);
+	ret = regmap_read(cw_bat->regmap, CW2015_REG_SOC, &soc);
 	if (ret)
 		return ret;
 
-	if (capacity > 100) {
+	if (soc > 100) {
 		int max_error_cycles = CW2015_BAT_SOC_ERROR_MS /
 					cw_bat->poll_interval_ms;
 
-		dev_err(cw_bat->dev, "Invalid SoC %d%%", capacity);
+		dev_err(cw_bat->dev, "Invalid SoC %d%%", soc);
 		cw_bat->read_errors++;
 		if (cw_bat->read_errors > max_error_cycles) {
 			dev_warn(cw_bat->dev,
@@ -285,20 +285,20 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 			cw_power_on_reset(cw_bat);
 			cw_bat->read_errors = 0;
 		}
-		return cw_bat->capacity;
+		return cw_bat->soc;
 	}
 	cw_bat->read_errors = 0;
 
 	/* Reset gauge if stuck while charging */
 	if (cw_bat->status == POWER_SUPPLY_STATUS_CHARGING &&
-			capacity == cw_bat->capacity) {
+			soc == cw_bat->soc) {
 		int max_stuck_cycles = CW2015_BAT_CHARGING_STUCK_MS /
 					cw_bat->poll_interval_ms;
 
 		cw_bat->charge_stuck_cnt++;
 		if (cw_bat->charge_stuck_cnt > max_stuck_cycles) {
 			dev_warn(cw_bat->dev,
-				"SoC stuck @%u%%, resetting gauge", capacity);
+				"SoC stuck @%u%%, resetting gauge", soc);
 			cw_power_on_reset(cw_bat);
 			cw_bat->charge_stuck_cnt = 0;
 		}
@@ -308,17 +308,17 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 
 	/* Ignore voltage dips during charge */
 	if (cw_bat->charger_attached &&
-			HYSTERESIS(capacity, cw_bat->capacity, 0, 3)) {
-		capacity = cw_bat->capacity;
+			HYSTERESIS(soc, cw_bat->soc, 0, 3)) {
+		soc = cw_bat->soc;
 	}
 
 	/* Ignore voltage spikes during discharge */
 	if (!cw_bat->charger_attached &&
-			HYSTERESIS(capacity, cw_bat->capacity, 3, 0)) {
-		capacity = cw_bat->capacity;
+			HYSTERESIS(soc, cw_bat->soc, 3, 0)) {
+		soc = cw_bat->soc;
 	}
 
-	return capacity;
+	return soc;
 }
 
 static int cw_get_voltage(struct cw_battery *cw_bat)
@@ -381,16 +381,16 @@ static void cw_update_charge_status(struct cw_battery *cw_bat)
 	}
 }
 
-static void cw_update_capacity(struct cw_battery *cw_bat)
+static void cw_update_soc(struct cw_battery *cw_bat)
 {
-	int capacity;
+	int soc;
 
-	capacity = cw_get_capacity(cw_bat);
-	if (capacity < 0)
+	soc = cw_get_soc(cw_bat);
+	if (soc < 0)
 		dev_err(cw_bat->dev, "Failed to get SoC from gauge: %d",
-			capacity);
-	else if (cw_bat->capacity != capacity) {
-		cw_bat->capacity = capacity;
+			soc);
+	else if (cw_bat->soc != soc) {
+		cw_bat->soc = soc;
 		cw_bat->battery_changed = true;
 	}
 }
@@ -412,7 +412,7 @@ static void cw_update_status(struct cw_battery *cw_bat)
 	int status = POWER_SUPPLY_STATUS_DISCHARGING;
 
 	if (cw_bat->charger_attached) {
-		if (cw_bat->capacity >= 100)
+		if (cw_bat->soc >= 100)
 			status = POWER_SUPPLY_STATUS_FULL;
 		else
 			status = POWER_SUPPLY_STATUS_CHARGING;
@@ -458,7 +458,7 @@ static void cw_bat_work(struct work_struct *work)
 					break;
 			}
 		}
-		cw_update_capacity(cw_bat);
+		cw_update_soc(cw_bat);
 		cw_update_voltage(cw_bat);
 		cw_update_charge_status(cw_bat);
 		cw_update_status(cw_bat);
@@ -466,7 +466,7 @@ static void cw_bat_work(struct work_struct *work)
 	}
 	dev_dbg(cw_bat->dev, "charger_attached = %d", cw_bat->charger_attached);
 	dev_dbg(cw_bat->dev, "status = %d", cw_bat->status);
-	dev_dbg(cw_bat->dev, "capacity = %d", cw_bat->capacity);
+	dev_dbg(cw_bat->dev, "soc = %d%%", cw_bat->soc);
 	dev_dbg(cw_bat->dev, "voltage = %d", cw_bat->voltage);
 
 	if (cw_bat->battery_changed)
@@ -495,7 +495,7 @@ static int cw_battery_get_property(struct power_supply *psy,
 	cw_bat = power_supply_get_drvdata(psy);
 	switch (psp) {
 	case POWER_SUPPLY_PROP_CAPACITY:
-		val->intval = cw_bat->capacity;
+		val->intval = cw_bat->soc;
 		break;
 
 	case POWER_SUPPLY_PROP_STATUS:
@@ -538,7 +538,7 @@ static int cw_battery_get_property(struct power_supply *psy,
 			cw_bat->battery.charge_full_design_uah > 0) {
 			/* calculate remaining capacity */
 			val->intval = cw_bat->battery.charge_full_design_uah;
-			val->intval = val->intval * cw_bat->capacity / 100;
+			val->intval = val->intval * cw_bat->soc / 100;
 
 			/* estimate current based on time to empty */
 			val->intval = 60 * val->intval / cw_bat->time_to_empty;
@@ -679,7 +679,7 @@ static int cw_bat_probe(struct i2c_client *client,
 
 	i2c_set_clientdata(client, cw_bat);
 	cw_bat->dev = &client->dev;
-	cw_bat->capacity = 1;
+	cw_bat->soc = 1;
 
 	ret = cw2015_parse_properties(cw_bat);
 	if (ret) {
