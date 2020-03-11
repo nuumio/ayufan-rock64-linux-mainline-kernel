@@ -200,7 +200,7 @@ static int cw_init(struct cw_battery *cw_bat)
 
 	if (!(reg_val & CW2015_CONFIG_UPDATE_FLG)) {
 		dev_dbg(cw_bat->dev,
-			"Battery config not present, uploading battery config");
+			"Battery profile not present, uploading battery profile");
 		if (cw_bat->bat_profile) {
 			ret = cw_update_profile(cw_bat);
 			if (ret) {
@@ -210,29 +210,32 @@ static int cw_init(struct cw_battery *cw_bat)
 			}
 		} else {
 			dev_warn(cw_bat->dev,
-				"Have no battery config for uploading, continuing without config");
+				"Have no battery profile for uploading, continuing without profile");
 		}
 	} else if (cw_bat->bat_profile) {
 		u8 bat_info[CW2015_SIZE_BATINFO];
 
 		ret = regmap_raw_read(cw_bat->regmap, CW2015_REG_BATINFO,
 					bat_info, CW2015_SIZE_BATINFO);
-		if (ret)
+		if (ret) {
+			dev_err(cw_bat->dev,
+				 "Failed to read stored battery profile\n");
 			return ret;
+		}
 
 		if (memcmp(bat_info, cw_bat->bat_profile,
 				CW2015_SIZE_BATINFO)) {
-			dev_warn(cw_bat->dev, "Replacing stored battery info");
+			dev_warn(cw_bat->dev, "Replacing stored battery profile");
 			ret = cw_update_profile(cw_bat);
 			if (ret)
 				return ret;
 		}
 	} else {
 		dev_warn(cw_bat->dev,
-			"Can't check current battery config, no config provided");
+			"Can't check current battery profile, no profile provided");
 	}
 
-	dev_dbg(cw_bat->dev, "Battery configured");
+	dev_dbg(cw_bat->dev, "Battery profile configured");
 	return 0;
 }
 
