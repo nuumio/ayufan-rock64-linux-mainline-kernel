@@ -275,7 +275,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 		dev_err(cw_bat->dev, "Invalid SoC %d%%", capacity);
 		cw_bat->read_errors++;
 		if (cw_bat->read_errors >
-		    (CW2015_BAT_SOC_ERROR_MS / cw_bat->poll_interval_ms)) {
+			(CW2015_BAT_SOC_ERROR_MS / cw_bat->poll_interval_ms)) {
 			dev_warn(cw_bat->dev,
 				"Too many invalid SoC reports, resetting gauge");
 			cw_por(cw_bat);
@@ -290,7 +290,7 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 		capacity == cw_bat->capacity) {
 		cw_bat->charge_stuck_cnt++;
 		if (cw_bat->charge_stuck_cnt >
-		    CW2015_BAT_CHARGING_STUCK_MS / cw_bat->poll_interval_ms) {
+			CW2015_BAT_CHARGING_STUCK_MS / cw_bat->poll_interval_ms) {
 			dev_warn(cw_bat->dev,
 				"SoC stuck @%u%%, resetting gauge", capacity);
 			cw_por(cw_bat);
