@@ -293,12 +293,16 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 		cw_bat->charge_stuck_cnt = 0;
 	}
 
-	/* Ignore state of charge swings */
-	if ((cw_bat->charger_attached &&
-		HYSTERESIS(capacity, cw_bat->capacity, 0, 3)) ||
-		(!cw_bat->charger_attached &&
-		HYSTERESIS(capacity, cw_bat->capacity, 3, 0))) {
-			capacity = cw_bat->capacity;
+	/* Ignore voltage dips during charge */
+	if (cw_bat->charger_attached &&
+		HYSTERESIS(capacity, cw_bat->capacity, 0, 3)) {
+		capacity = cw_bat->capacity;
+	}
+
+	/* Ignore voltage spikes during discharge */
+	if (!cw_bat->charger_attached &&
+		HYSTERESIS(capacity, cw_bat->capacity, 3, 0)) {
+		capacity = cw_bat->capacity;
 	}
 
 	return capacity;
