@@ -467,7 +467,7 @@ static void cw_bat_work(struct work_struct *work)
 	dev_dbg(cw_bat->dev, "charger_attached = %d", cw_bat->charger_attached);
 	dev_dbg(cw_bat->dev, "status = %d", cw_bat->status);
 	dev_dbg(cw_bat->dev, "soc = %d%%", cw_bat->soc);
-	dev_dbg(cw_bat->dev, "voltage = %d", cw_bat->voltage_mv);
+	dev_dbg(cw_bat->dev, "voltage = %dmV", cw_bat->voltage_mv);
 
 	if (cw_bat->battery_changed)
 		power_supply_changed(cw_bat->rk_bat);
