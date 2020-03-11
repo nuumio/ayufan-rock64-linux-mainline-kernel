@@ -274,10 +274,12 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 		return ret;
 
 	if (capacity > 100) {
+		int max_error_cycles = CW2015_BAT_SOC_ERROR_MS /
+					cw_bat->poll_interval_ms;
+
 		dev_err(cw_bat->dev, "Invalid SoC %d%%", capacity);
 		cw_bat->read_errors++;
-		if (cw_bat->read_errors >
-			(CW2015_BAT_SOC_ERROR_MS / cw_bat->poll_interval_ms)) {
+		if (cw_bat->read_errors > max_error_cycles) {
 			dev_warn(cw_bat->dev,
 				"Too many invalid SoC reports, resetting gauge");
 			cw_power_on_reset(cw_bat);
@@ -289,10 +291,12 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 
 	/* Reset gauge if stuck while charging */
 	if (cw_bat->status == POWER_SUPPLY_STATUS_CHARGING &&
-		capacity == cw_bat->capacity) {
+			capacity == cw_bat->capacity) {
+		int max_stuck_cycles = CW2015_BAT_CHARGING_STUCK_MS /
+					cw_bat->poll_interval_ms;
+
 		cw_bat->charge_stuck_cnt++;
-		if (cw_bat->charge_stuck_cnt >
-			CW2015_BAT_CHARGING_STUCK_MS / cw_bat->poll_interval_ms) {
+		if (cw_bat->charge_stuck_cnt > max_stuck_cycles) {
 			dev_warn(cw_bat->dev,
 				"SoC stuck @%u%%, resetting gauge", capacity);
 			cw_power_on_reset(cw_bat);
@@ -304,13 +308,13 @@ static int cw_get_capacity(struct cw_battery *cw_bat)
 
 	/* Ignore voltage dips during charge */
 	if (cw_bat->charger_attached &&
-		HYSTERESIS(capacity, cw_bat->capacity, 0, 3)) {
+			HYSTERESIS(capacity, cw_bat->capacity, 0, 3)) {
 		capacity = cw_bat->capacity;
 	}
 
 	/* Ignore voltage spikes during discharge */
 	if (!cw_bat->charger_attached &&
-		HYSTERESIS(capacity, cw_bat->capacity, 3, 0)) {
+			HYSTERESIS(capacity, cw_bat->capacity, 3, 0)) {
 		capacity = cw_bat->capacity;
 	}
 
