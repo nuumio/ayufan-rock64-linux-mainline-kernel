@@ -565,8 +565,7 @@ static int cw2015_parse_properties(struct cw_battery *cw_bat)
 	u32 value;
 	int ret;
 
-	length = device_property_read_u8_array(dev, "cellwise,battery-profile",
-						NULL, 0);
+	length = device_property_count_u8(dev, "cellwise,battery-profile");
 	if (length) {
 		if (length != CW2015_SIZE_BATINFO) {
 			dev_err(cw_bat->dev, "battery-profile must be %d bytes",
@@ -593,9 +592,7 @@ static int cw2015_parse_properties(struct cw_battery *cw_bat)
 	}
 
 	cw_bat->poll_interval_ms = CW2015_DEFAULT_POLL_INTERVAL_MS;
-	ret = device_property_read_u32_array(dev,
-						"cellwise,monitor-interval-ms",
-						&value, 1);
+	ret = device_property_read_u32(dev, "cellwise,monitor-interval-ms", &value);
 	if (ret >= 0) {
 		dev_dbg(cw_bat->dev, "Overriding default monitor-interval with %u ms",
 			value);
