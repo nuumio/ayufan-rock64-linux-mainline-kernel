@@ -350,8 +350,7 @@ static void cw_update_charge_status(struct cw_battery *cw_bat)
 
 	ret = power_supply_am_i_supplied(cw_bat->rk_bat);
 	if (ret < 0) {
-		dev_warn(cw_bat->dev, "Failed to get supply state: %d",
-				ret);
+		dev_warn(cw_bat->dev, "Failed to get supply state: %d", ret);
 	} else {
 		bool charger_attached;
 
@@ -371,8 +370,7 @@ static void cw_update_soc(struct cw_battery *cw_bat)
 
 	soc = cw_get_soc(cw_bat);
 	if (soc < 0)
-		dev_err(cw_bat->dev, "Failed to get SoC from gauge: %d",
-			soc);
+		dev_err(cw_bat->dev, "Failed to get SoC from gauge: %d", soc);
 	else if (cw_bat->soc != soc) {
 		cw_bat->soc = soc;
 		cw_bat->battery_changed = true;
@@ -437,7 +435,7 @@ static void cw_bat_work(struct work_struct *work)
 	} else {
 		if ((reg_val & CW2015_MODE_SLEEP_MASK) == CW2015_MODE_SLEEP) {
 			for (i = 0; i < CW2015_RESET_TRIES; i++) {
-				if (cw_power_on_reset(cw_bat) == 0)
+				if (!cw_power_on_reset(cw_bat))
 					break;
 			}
 		}
@@ -619,7 +617,7 @@ static const struct regmap_range regmap_ranges_wr_yes[] = {
 	regmap_reg_range(CW2015_REG_RRT_ALERT, CW2015_REG_CONFIG),
 	regmap_reg_range(CW2015_REG_MODE, CW2015_REG_MODE),
 	regmap_reg_range(CW2015_REG_BATINFO,
-				CW2015_REG_BATINFO + CW2015_SIZE_BATINFO - 1),
+			CW2015_REG_BATINFO + CW2015_SIZE_BATINFO - 1),
 };
 
 static const struct regmap_access_table regmap_wr_table = {
