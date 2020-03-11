@@ -27,7 +27,6 @@
 
 #define CW2015_SIZE_BATINFO		64
 
-#define CW2015_READ_TRIES		30
 #define CW2015_RESET_TRIES		5
 
 #define CW2015_REG_VERSION		0x00
@@ -99,7 +98,7 @@ static int cw_read_word(struct cw_battery *cw_bat, u8 reg, u16 *val)
 
 int cw_update_profile(struct cw_battery *cw_bat)
 {
-	int ret, i;
+	int ret;
 	unsigned int reg_val;
 	u8 reset_val;
 
@@ -146,28 +145,16 @@ int cw_update_profile(struct cw_battery *cw_bat)
 		return ret;
 
 	/* wait for gauge to become ready */
-	for (i = 0; i < CW2015_READ_TRIES; i++) {
-		ret = regmap_read(cw_bat->regmap, CW2015_REG_SOC, &reg_val);
-		if (ret)
-			return ret;
-		/* SoC must not be more than 100% */
-		else if (reg_val <= 100)
-			break;
-
-		msleep(100);
-	}
-
-	if (i >= CW2015_READ_TRIES) {
-		reg_val = CW2015_MODE_SLEEP;
-		regmap_write(cw_bat->regmap, CW2015_REG_MODE, reg_val);
+	ret = regmap_read_poll_timeout(cw_bat->regmap, CW2015_REG_SOC,
+					reg_val, reg_val <= 100,
+					10 * USEC_PER_MSEC, 10 * USEC_PER_SEC);
+	if(ret)
 		dev_err(cw_bat->dev,
 			"Gauge did not become ready after profile upload");
-		return -ETIMEDOUT;
-	}
+	else
+		dev_dbg(cw_bat->dev, "Battery profile updated");
 
-
-	dev_dbg(cw_bat->dev, "Battery profile updated");
-	return 0;
+	return ret;
 }
 
 static int cw_init(struct cw_battery *cw_bat)
