@@ -160,7 +160,7 @@ int cw_update_profile(struct cw_battery *cw_bat)
 		reg_val = CW2015_MODE_SLEEP;
 		regmap_write(cw_bat->regmap, CW2015_REG_MODE, reg_val);
 		dev_err(cw_bat->dev,
-			"Gauge did not get ready after profile upload");
+			"Gauge did not become ready after profile upload");
 		return -ETIMEDOUT;
 	}
 
