@@ -27,14 +27,63 @@ LIST_HEAD(trigger_list);
 
  /* Used by LED Class */
 
+#define TRIGGER_INVERT_SUFFIX "-inverted"
+
+static bool led_trigger_is_inverted(const char *trigname)
+{
+	if (strlen(trigname) >= strlen(TRIGGER_INVERT_SUFFIX)) {
+		return !strcmp(trigname + strlen(trigname) -
+		                strlen(TRIGGER_INVERT_SUFFIX),
+		                TRIGGER_INVERT_SUFFIX);
+	}
+
+	return false;
+}
+
+static size_t led_trigger_get_name_len(const char *trigname)
+{
+	if (led_trigger_is_inverted(trigname)) {
+		return strlen(trigname) - strlen(TRIGGER_INVERT_SUFFIX);
+	}
+	return strlen(trigname);
+}
+
+static int led_trigger_set_str(struct led_classdev *led_cdev,
+                               const char *trigname)
+{
+	struct led_trigger *trig;
+	bool inverted = led_trigger_is_inverted(trigname);
+	size_t len = led_trigger_get_name_len(trigname);
+
+	down_read(&triggers_list_lock);
+	list_for_each_entry(trig, &trigger_list, next_trig) {
+		if (strlen(trig->name) == len &&
+		    !strncmp(trigname, trig->name, len)) {
+			down_write(&led_cdev->trigger_lock);
+			led_trigger_set(led_cdev, trig);
+			if (inverted)
+				led_cdev->flags |= LED_INVERT_TRIGGER;
+			else
+				led_cdev->flags &= ~LED_INVERT_TRIGGER;
+			up_write(&led_cdev->trigger_lock);
+
+			up_read(&triggers_list_lock);
+			return 0;
+		}
+	}
+	/* we come here only if trigname matches no trigger */
+	up_read(&triggers_list_lock);
+	return -EINVAL;
+}
+
 ssize_t led_trigger_write(struct file *filp, struct kobject *kobj,
 			  struct bin_attribute *bin_attr, char *buf,
 			  loff_t pos, size_t count)
 {
 	struct device *dev = kobj_to_dev(kobj);
 	struct led_classdev *led_cdev = dev_get_drvdata(dev);
-	struct led_trigger *trig;
 	int ret = count;
+	char* name;
 
 	mutex_lock(&led_cdev->led_access);
 
@@ -48,20 +97,10 @@ ssize_t led_trigger_write(struct file *filp, struct kobject *kobj,
 		goto unlock;
 	}
 
-	down_read(&triggers_list_lock);
-	list_for_each_entry(trig, &trigger_list, next_trig) {
-		if (sysfs_streq(buf, trig->name)) {
-			down_write(&led_cdev->trigger_lock);
-			led_trigger_set(led_cdev, trig);
-			up_write(&led_cdev->trigger_lock);
-
-			up_read(&triggers_list_lock);
-			goto unlock;
-		}
-	}
-	/* we come here only if buf matches no trigger */
-	ret = -EINVAL;
-	up_read(&triggers_list_lock);
+	name = strim(buf);
+	ret = led_trigger_set_str(led_cdev, name);
+	if (!ret)
+		ret = count;
 
 unlock:
 	mutex_unlock(&led_cdev->led_access);
@@ -93,12 +132,20 @@ static int led_trigger_format(char *buf, size_t size,
 				       led_cdev->trigger ? "none" : "[none]");
 
 	list_for_each_entry(trig, &trigger_list, next_trig) {
-		bool hit = led_cdev->trigger &&
-			!strcmp(led_cdev->trigger->name, trig->name);
+		bool hit = led_cdev->trigger == trig;
+		bool inverted = led_cdev->flags & LED_INVERT_TRIGGER;
 
 		len += led_trigger_snprintf(buf + len, size - len,
-					    " %s%s%s", hit ? "[" : "",
-					    trig->name, hit ? "]" : "");
+					    " %s%s%s",
+		                            hit && !inverted ? "[" : "",
+					    trig->name,
+		                            hit && !inverted ? "]" : "");
+
+		len += led_trigger_snprintf(buf + len, size - len,
+					    " %s%s"TRIGGER_INVERT_SUFFIX"%s",
+		                            hit && inverted ? "[" : "",
+					    trig->name,
+		                            hit && inverted ? "]" : "");
 	}
 
 	len += led_trigger_snprintf(buf + len, size - len, "\n");
@@ -235,21 +282,16 @@ EXPORT_SYMBOL_GPL(led_trigger_remove);
 
 void led_trigger_set_default(struct led_classdev *led_cdev)
 {
-	struct led_trigger *trig;
+	bool found;
 
 	if (!led_cdev->default_trigger)
 		return;
 
 	down_read(&triggers_list_lock);
-	down_write(&led_cdev->trigger_lock);
-	list_for_each_entry(trig, &trigger_list, next_trig) {
-		if (!strcmp(led_cdev->default_trigger, trig->name)) {
-			led_cdev->flags |= LED_INIT_DEFAULT_TRIGGER;
-			led_trigger_set(led_cdev, trig);
-			break;
-		}
+	found = !led_trigger_set_str(led_cdev, led_cdev->default_trigger);
+	if (found) {
+		led_cdev->flags |= LED_INIT_DEFAULT_TRIGGER;
 	}
-	up_write(&led_cdev->trigger_lock);
 	up_read(&triggers_list_lock);
 }
 EXPORT_SYMBOL_GPL(led_trigger_set_default);
@@ -292,12 +334,24 @@ int led_trigger_register(struct led_trigger *trig)
 	/* Register with any LEDs that have this as a default trigger */
 	down_read(&leds_list_lock);
 	list_for_each_entry(led_cdev, &leds_list, node) {
+		size_t len;
 		down_write(&led_cdev->trigger_lock);
-		if (!led_cdev->trigger && led_cdev->default_trigger &&
-			    !strcmp(led_cdev->default_trigger, trig->name)) {
+		if (led_cdev->trigger || !led_cdev->default_trigger) {
+			up_write(&led_cdev->trigger_lock);
+			continue;
+		}
+
+		len = led_trigger_get_name_len(led_cdev->default_trigger);
+		if (strlen(trig->name) == len &&
+		    strncmp(led_cdev->default_trigger, trig->name, len)) {
 			led_cdev->flags |= LED_INIT_DEFAULT_TRIGGER;
 			led_trigger_set(led_cdev, trig);
+			if (led_trigger_is_inverted(led_cdev->default_trigger))
+				led_cdev->flags |= LED_INVERT_TRIGGER;
+			else
+				led_cdev->flags &= ~LED_INVERT_TRIGGER;
 		}
+
 		up_write(&led_cdev->trigger_lock);
 	}
 	up_read(&leds_list_lock);
@@ -369,8 +423,12 @@ void led_trigger_event(struct led_trigger *trig,
 		return;
 
 	read_lock(&trig->leddev_list_lock);
-	list_for_each_entry(led_cdev, &trig->led_cdevs, trig_list)
-		led_set_brightness(led_cdev, brightness);
+	list_for_each_entry(led_cdev, &trig->led_cdevs, trig_list) {
+		if (led_cdev->flags & LED_INVERT_TRIGGER)
+			led_set_brightness(led_cdev, led_cdev->max_brightness - brightness);
+		else
+			led_set_brightness(led_cdev, brightness);
+	}
 	read_unlock(&trig->leddev_list_lock);
 }
 EXPORT_SYMBOL_GPL(led_trigger_event);
@@ -388,9 +446,11 @@ static void led_trigger_blink_setup(struct led_trigger *trig,
 
 	read_lock(&trig->leddev_list_lock);
 	list_for_each_entry(led_cdev, &trig->led_cdevs, trig_list) {
+		bool trigger_inverted =
+			!!(led_cdev->flags & LED_INVERT_TRIGGER);
 		if (oneshot)
 			led_blink_set_oneshot(led_cdev, delay_on, delay_off,
-					      invert);
+					      (!!invert) == trigger_inverted);
 		else
 			led_blink_set(led_cdev, delay_on, delay_off);
 	}
