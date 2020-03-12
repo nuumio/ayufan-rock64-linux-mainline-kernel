@@ -1755,11 +1755,12 @@ static int xpad_probe(struct usb_interface *intf, const struct usb_device_id *id
 
 		if (dpad_to_buttons)
 			xpad->mapping |= MAP_DPAD_TO_BUTTONS;
-		if (triggers_to_buttons)
-			xpad->mapping |= MAP_TRIGGERS_TO_BUTTONS;
 		if (sticks_to_null)
 			xpad->mapping |= MAP_STICKS_TO_NULL;
 	}
+
+	if (triggers_to_buttons)
+		xpad->mapping |= MAP_TRIGGERS_TO_BUTTONS;
 
 	if (xpad->xtype == XTYPE_XBOXONE &&
 	    intf->cur_altsetting->desc.bInterfaceNumber != 0) {
