@@ -115,6 +115,8 @@ struct panfrost_device {
 		ktime_t time_last_update;
 		atomic_t busy_count;
 	} devfreq;
+
+	bool is_resetting;
 };
 
 struct panfrost_mmu {

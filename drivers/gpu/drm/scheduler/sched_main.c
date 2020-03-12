@@ -343,6 +343,10 @@ void drm_sched_increase_karma(struct drm_sched_job *bad)
 
 			spin_lock(&rq->lock);
 			list_for_each_entry_safe(entity, tmp, &rq->entities, list) {
+				if (!smp_load_acquire(&bad->s_fence)) {
+					spin_unlock(&rq->lock);
+					return;
+				}
 				if (bad->s_fence->scheduled.context ==
 				    entity->fence_context) {
 					if (atomic_read(&bad->karma) >
@@ -438,7 +442,10 @@ void drm_sched_stop(struct drm_gpu_scheduler *sched, struct drm_sched_job *bad)
 	 * this TDR finished and before the newly restarted jobs had a
 	 * chance to complete.
 	 */
-	cancel_delayed_work(&sched->work_tdr);
+	if (bad->sched != sched)
+		cancel_delayed_work_sync(&sched->work_tdr);
+	else
+		cancel_delayed_work(&sched->work_tdr);
 }
 
 EXPORT_SYMBOL(drm_sched_stop);
@@ -577,7 +584,7 @@ EXPORT_SYMBOL(drm_sched_job_init);
 void drm_sched_job_cleanup(struct drm_sched_job *job)
 {
 	dma_fence_put(&job->s_fence->finished);
-	job->s_fence = NULL;
+	smp_store_release(&job->s_fence, 0);
 }
 EXPORT_SYMBOL(drm_sched_job_cleanup);
 

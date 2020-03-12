@@ -392,6 +392,11 @@ static void panfrost_job_timedout(struct drm_sched_job *sched_job)
 		job_read(pfdev, JS_TAIL_LO(js)),
 		sched_job);
 
+	if (pfdev->is_resetting) {
+		return;
+	}
+	pfdev->is_resetting = true;
+
 	if (!mutex_trylock(&pfdev->reset_lock))
 		return;
 
@@ -425,6 +430,7 @@ static void panfrost_job_timedout(struct drm_sched_job *sched_job)
 	for (i = 0; i < NUM_JOB_SLOTS; i++)
 		drm_sched_start(&pfdev->js->queue[i].sched, true);
 
+	pfdev->is_resetting = false;
 	mutex_unlock(&pfdev->reset_lock);
 }
 
