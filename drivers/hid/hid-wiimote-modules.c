@@ -1110,12 +1110,12 @@ static void wiimod_classic_in_ext(struct wiimote_data *wdata, const __u8 *ext)
 	rt <<= 1;
 	lt <<= 1;
 
-	input_report_abs(wdata->extension.input, ABS_HAT1X, lx - 0x20);
-	input_report_abs(wdata->extension.input, ABS_HAT1Y, ly - 0x20);
-	input_report_abs(wdata->extension.input, ABS_HAT2X, rx - 0x20);
-	input_report_abs(wdata->extension.input, ABS_HAT2Y, ry - 0x20);
-	input_report_abs(wdata->extension.input, ABS_HAT3X, rt);
-	input_report_abs(wdata->extension.input, ABS_HAT3Y, lt);
+	input_report_abs(wdata->extension.input, ABS_X, lx - 0x20);
+	input_report_abs(wdata->extension.input, ABS_Y, ly - 0x20);
+	input_report_abs(wdata->extension.input, ABS_RX, rx - 0x20);
+	input_report_abs(wdata->extension.input, ABS_RY, ry - 0x20);
+	input_report_abs(wdata->extension.input, ABS_Z, rt);
+	input_report_abs(wdata->extension.input, ABS_RZ, lt);
 
 	input_report_key(wdata->extension.input,
 			 wiimod_classic_map[WIIMOD_CLASSIC_KEY_RIGHT],
@@ -1225,24 +1225,24 @@ static int wiimod_classic_probe(const struct wiimod_ops *ops,
 			wdata->extension.input->keybit);
 
 	set_bit(EV_ABS, wdata->extension.input->evbit);
-	set_bit(ABS_HAT1X, wdata->extension.input->absbit);
-	set_bit(ABS_HAT1Y, wdata->extension.input->absbit);
-	set_bit(ABS_HAT2X, wdata->extension.input->absbit);
-	set_bit(ABS_HAT2Y, wdata->extension.input->absbit);
-	set_bit(ABS_HAT3X, wdata->extension.input->absbit);
-	set_bit(ABS_HAT3Y, wdata->extension.input->absbit);
+	set_bit(ABS_X, wdata->extension.input->absbit);
+	set_bit(ABS_Y, wdata->extension.input->absbit);
+	set_bit(ABS_RX, wdata->extension.input->absbit);
+	set_bit(ABS_RY, wdata->extension.input->absbit);
+	set_bit(ABS_Z, wdata->extension.input->absbit);
+	set_bit(ABS_RZ, wdata->extension.input->absbit);
 	input_set_abs_params(wdata->extension.input,
-			     ABS_HAT1X, -30, 30, 1, 1);
+			     ABS_X, -30, 30, 1, 1);
 	input_set_abs_params(wdata->extension.input,
-			     ABS_HAT1Y, -30, 30, 1, 1);
+			     ABS_Y, -30, 30, 1, 1);
 	input_set_abs_params(wdata->extension.input,
-			     ABS_HAT2X, -30, 30, 1, 1);
+			     ABS_RX, -30, 30, 1, 1);
 	input_set_abs_params(wdata->extension.input,
-			     ABS_HAT2Y, -30, 30, 1, 1);
+			     ABS_RY, -30, 30, 1, 1);
 	input_set_abs_params(wdata->extension.input,
-			     ABS_HAT3X, -30, 30, 1, 1);
+			     ABS_Z, -30, 30, 1, 1);
 	input_set_abs_params(wdata->extension.input,
-			     ABS_HAT3Y, -30, 30, 1, 1);
+			     ABS_RZ, -30, 30, 1, 1);
 
 	ret = input_register_device(wdata->extension.input);
 	if (ret)
