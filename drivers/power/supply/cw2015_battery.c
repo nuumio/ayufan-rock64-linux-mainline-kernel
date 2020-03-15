@@ -12,17 +12,14 @@
 #include <linux/bits.h>
 #include <linux/delay.h>
 #include <linux/i2c.h>
-#include <linux/init.h>
+#include <linux/gfp.h>
 #include <linux/gpio/consumer.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/platform_device.h>
 #include <linux/power_supply.h>
 #include <linux/property.h>
 #include <linux/regmap.h>
-#include <linux/slab.h>
 #include <linux/time.h>
-#include <linux/timekeeping.h>
 #include <linux/workqueue.h>
 
 #define CW2015_SIZE_BATINFO		64
@@ -110,14 +107,14 @@ int cw_update_profile(struct cw_battery *cw_bat)
 	reset_val = reg_val;
 	if ((reg_val & CW2015_MODE_SLEEP_MASK) == CW2015_MODE_SLEEP) {
 		dev_err(cw_bat->dev,
-			"Device is in sleep mode, can't update battery info");
+			"Gauge is in sleep mode, can't update battery info\n");
 		return -EINVAL;
 	}
 
 	/* write new battery info */
 	ret = regmap_raw_write(cw_bat->regmap, CW2015_REG_BATINFO,
-				cw_bat->bat_profile,
-				CW2015_SIZE_BATINFO);
+			       cw_bat->bat_profile,
+			       CW2015_SIZE_BATINFO);
 	if (ret)
 		return ret;
 
@@ -146,13 +143,13 @@ int cw_update_profile(struct cw_battery *cw_bat)
 
 	/* wait for gauge to become ready */
 	ret = regmap_read_poll_timeout(cw_bat->regmap, CW2015_REG_SOC,
-					reg_val, reg_val <= 100,
-					10 * USEC_PER_MSEC, 10 * USEC_PER_SEC);
-	if(ret)
+				       reg_val, reg_val <= 100,
+				       10 * USEC_PER_MSEC, 10 * USEC_PER_SEC);
+	if (ret)
 		dev_err(cw_bat->dev,
-			"Gauge did not become ready after profile upload");
+			"Gauge did not become ready after profile upload\n");
 	else
-		dev_dbg(cw_bat->dev, "Battery profile updated");
+		dev_dbg(cw_bat->dev, "Battery profile updated\n");
 
 	return ret;
 }
@@ -174,7 +171,7 @@ static int cw_init(struct cw_battery *cw_bat)
 		return ret;
 
 	if ((reg_val & CW2015_MASK_ATHD) != CW2015_ATHD(cw_bat->alert_level)) {
-		dev_dbg(cw_bat->dev, "Setting new alert level");
+		dev_dbg(cw_bat->dev, "Setting new alert level\n");
 		reg_val &= ~CW2015_MASK_ATHD;
 		reg_val |= ~CW2015_ATHD(cw_bat->alert_level);
 		ret = regmap_write(cw_bat->regmap, CW2015_REG_CONFIG, reg_val);
@@ -188,41 +185,41 @@ static int cw_init(struct cw_battery *cw_bat)
 
 	if (!(reg_val & CW2015_CONFIG_UPDATE_FLG)) {
 		dev_dbg(cw_bat->dev,
-			"Battery profile not present, uploading battery profile");
+			"Battery profile not present, uploading battery profile\n");
 		if (cw_bat->bat_profile) {
 			ret = cw_update_profile(cw_bat);
 			if (ret) {
 				dev_err(cw_bat->dev,
-					 "Failed to upload battery info\n");
+					"Failed to upload battery profile\n");
 				return ret;
 			}
 		} else {
 			dev_warn(cw_bat->dev,
-				"Have no battery profile for uploading, continuing without profile");
+				 "No profile specified, continuing without profile\n");
 		}
 	} else if (cw_bat->bat_profile) {
 		u8 bat_info[CW2015_SIZE_BATINFO];
 
 		ret = regmap_raw_read(cw_bat->regmap, CW2015_REG_BATINFO,
-					bat_info, CW2015_SIZE_BATINFO);
+				      bat_info, CW2015_SIZE_BATINFO);
 		if (ret) {
 			dev_err(cw_bat->dev,
-				 "Failed to read stored battery profile\n");
+				"Failed to read stored battery profile\n");
 			return ret;
 		}
 
 		if (memcmp(bat_info, cw_bat->bat_profile, CW2015_SIZE_BATINFO)) {
-			dev_warn(cw_bat->dev, "Replacing stored battery profile");
+			dev_warn(cw_bat->dev, "Replacing stored battery profile\n");
 			ret = cw_update_profile(cw_bat);
 			if (ret)
 				return ret;
 		}
 	} else {
 		dev_warn(cw_bat->dev,
-			"Can't check current battery profile, no profile provided");
+			 "Can't check current battery profile, no profile provided\n");
 	}
 
-	dev_dbg(cw_bat->dev, "Battery profile configured");
+	dev_dbg(cw_bat->dev, "Battery profile configured\n");
 	return 0;
 }
 
@@ -266,11 +263,11 @@ static int cw_get_soc(struct cw_battery *cw_bat)
 		int max_error_cycles =
 			CW2015_BAT_SOC_ERROR_MS / cw_bat->poll_interval_ms;
 
-		dev_err(cw_bat->dev, "Invalid SoC %d%%", soc);
+		dev_err(cw_bat->dev, "Invalid SoC %d%%\n", soc);
 		cw_bat->read_errors++;
 		if (cw_bat->read_errors > max_error_cycles) {
 			dev_warn(cw_bat->dev,
-				"Too many invalid SoC reports, resetting gauge");
+				 "Too many invalid SoC reports, resetting gauge\n");
 			cw_power_on_reset(cw_bat);
 			cw_bat->read_errors = 0;
 		}
@@ -286,7 +283,7 @@ static int cw_get_soc(struct cw_battery *cw_bat)
 		cw_bat->charge_stuck_cnt++;
 		if (cw_bat->charge_stuck_cnt > max_stuck_cycles) {
 			dev_warn(cw_bat->dev,
-				"SoC stuck @%u%%, resetting gauge", soc);
+				 "SoC stuck @%u%%, resetting gauge\n", soc);
 			cw_power_on_reset(cw_bat);
 			cw_bat->charge_stuck_cnt = 0;
 		}
@@ -350,7 +347,7 @@ static void cw_update_charge_status(struct cw_battery *cw_bat)
 
 	ret = power_supply_am_i_supplied(cw_bat->rk_bat);
 	if (ret < 0) {
-		dev_warn(cw_bat->dev, "Failed to get supply state: %d", ret);
+		dev_warn(cw_bat->dev, "Failed to get supply state: %d\n", ret);
 	} else {
 		bool charger_attached;
 
@@ -370,7 +367,7 @@ static void cw_update_soc(struct cw_battery *cw_bat)
 
 	soc = cw_get_soc(cw_bat);
 	if (soc < 0)
-		dev_err(cw_bat->dev, "Failed to get SoC from gauge: %d", soc);
+		dev_err(cw_bat->dev, "Failed to get SoC from gauge: %d\n", soc);
 	else if (cw_bat->soc != soc) {
 		cw_bat->soc = soc;
 		cw_bat->battery_changed = true;
@@ -383,7 +380,7 @@ static void cw_update_voltage(struct cw_battery *cw_bat)
 
 	voltage_mv = cw_get_voltage(cw_bat);
 	if (voltage_mv < 0)
-		dev_err(cw_bat->dev, "Failed to get voltage from gauge: %d",
+		dev_err(cw_bat->dev, "Failed to get voltage from gauge: %d\n",
 			voltage_mv);
 	else
 		cw_bat->voltage_mv = voltage_mv;
@@ -411,7 +408,7 @@ static void cw_update_time_to_empty(struct cw_battery *cw_bat)
 
 	time_to_empty = cw_get_time_to_empty(cw_bat);
 	if (time_to_empty < 0)
-		dev_err(cw_bat->dev, "Failed to get time to empty from gauge: %d",
+		dev_err(cw_bat->dev, "Failed to get time to empty from gauge: %d\n",
 			time_to_empty);
 	else if (cw_bat->time_to_empty != time_to_empty) {
 		cw_bat->time_to_empty = time_to_empty;
@@ -425,15 +422,16 @@ static void cw_bat_work(struct work_struct *work)
 	struct cw_battery *cw_bat;
 	int ret;
 	unsigned int reg_val;
-	int i = 0;
 
 	delay_work = to_delayed_work(work);
 	cw_bat = container_of(delay_work, struct cw_battery, battery_delay_work);
 	ret = regmap_read(cw_bat->regmap, CW2015_REG_MODE, &reg_val);
 	if (ret) {
-		dev_err(cw_bat->dev, "Failed to read mode from gauge: %d", ret);
+		dev_err(cw_bat->dev, "Failed to read mode from gauge: %d\n", ret);
 	} else {
 		if ((reg_val & CW2015_MODE_SLEEP_MASK) == CW2015_MODE_SLEEP) {
+			int i;
+
 			for (i = 0; i < CW2015_RESET_TRIES; i++) {
 				if (!cw_power_on_reset(cw_bat))
 					break;
@@ -445,10 +443,10 @@ static void cw_bat_work(struct work_struct *work)
 		cw_update_status(cw_bat);
 		cw_update_time_to_empty(cw_bat);
 	}
-	dev_dbg(cw_bat->dev, "charger_attached = %d", cw_bat->charger_attached);
-	dev_dbg(cw_bat->dev, "status = %d", cw_bat->status);
-	dev_dbg(cw_bat->dev, "soc = %d%%", cw_bat->soc);
-	dev_dbg(cw_bat->dev, "voltage = %dmV", cw_bat->voltage_mv);
+	dev_dbg(cw_bat->dev, "charger_attached = %d\n", cw_bat->charger_attached);
+	dev_dbg(cw_bat->dev, "status = %d\n", cw_bat->status);
+	dev_dbg(cw_bat->dev, "soc = %d%%\n", cw_bat->soc);
+	dev_dbg(cw_bat->dev, "voltage = %dmV\n", cw_bat->voltage_mv);
 
 	if (cw_bat->battery_changed)
 		power_supply_changed(cw_bat->rk_bat);
@@ -470,7 +468,6 @@ static int cw_battery_get_property(struct power_supply *psy,
 				   enum power_supply_property psp,
 				   union power_supply_propval *val)
 {
-	int ret = 0;
 	struct cw_battery *cw_bat;
 
 	cw_bat = power_supply_get_drvdata(psy);
@@ -516,7 +513,7 @@ static int cw_battery_get_property(struct power_supply *psy,
 
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		if (cw_battery_valid_time_to_empty(cw_bat) &&
-			cw_bat->battery.charge_full_design_uah > 0) {
+		    cw_bat->battery.charge_full_design_uah > 0) {
 			/* calculate remaining capacity */
 			val->intval = cw_bat->battery.charge_full_design_uah;
 			val->intval = val->intval * cw_bat->soc / 100;
@@ -532,7 +529,7 @@ static int cw_battery_get_property(struct power_supply *psy,
 	default:
 		break;
 	}
-	return ret;
+	return 0;
 }
 
 static enum power_supply_property cw_battery_properties[] = {
@@ -560,23 +557,20 @@ static int cw2015_parse_properties(struct cw_battery *cw_bat)
 {
 	struct device *dev = cw_bat->dev;
 	int length;
-	u32 value;
 	int ret;
 
 	length = device_property_count_u8(dev, "cellwise,battery-profile");
-	if (length) {
-		if (length != CW2015_SIZE_BATINFO) {
-			dev_err(cw_bat->dev, "battery-profile must be %d bytes",
-				CW2015_SIZE_BATINFO);
-			return -EINVAL;
-		}
-
+	if (length < 0) {
+		dev_warn(cw_bat->dev,
+			 "No battery-profile found, using current flash contents\n");
+	} else if (length != CW2015_SIZE_BATINFO) {
+		dev_err(cw_bat->dev, "battery-profile must be %d bytes\n",
+			CW2015_SIZE_BATINFO);
+		return -EINVAL;
+	} else {
 		cw_bat->bat_profile = devm_kzalloc(dev, length, GFP_KERNEL);
-		if (!cw_bat->bat_profile) {
-			dev_err(cw_bat->dev,
-				"Failed to allocate memory for battery config info");
+		if (!cw_bat->bat_profile)
 			return -ENOMEM;
-		}
 
 		ret = device_property_read_u8_array(dev,
 						"cellwise,battery-profile",
@@ -584,17 +578,13 @@ static int cw2015_parse_properties(struct cw_battery *cw_bat)
 						length);
 		if (ret)
 			return ret;
-	} else {
-		dev_warn(cw_bat->dev,
-			"No battery-profile found, rolling with current flash contents");
 	}
 
-	cw_bat->poll_interval_ms = CW2015_DEFAULT_POLL_INTERVAL_MS;
-	ret = device_property_read_u32(dev, "cellwise,monitor-interval-ms", &value);
-	if (ret >= 0) {
-		dev_dbg(cw_bat->dev, "Overriding default monitor-interval with %u ms",
-			value);
-		cw_bat->poll_interval_ms = value;
+	ret = device_property_read_u32(dev, "cellwise,monitor-interval-ms",
+				       &cw_bat->poll_interval_ms);
+	if (ret) {
+		dev_dbg(cw_bat->dev, "Using default poll interval\n");
+		cw_bat->poll_interval_ms = CW2015_DEFAULT_POLL_INTERVAL_MS;
 	}
 
 	return 0;
@@ -643,12 +633,11 @@ static const struct regmap_config cw2015_regmap_config = {
 	.max_register = CW2015_REG_BATINFO + CW2015_SIZE_BATINFO - 1,
 };
 
-static int cw_bat_probe(struct i2c_client *client,
-			const struct i2c_device_id *id)
+static int cw_bat_probe(struct i2c_client *client)
 {
 	int ret;
 	struct cw_battery *cw_bat;
-	struct power_supply_config psy_cfg = { };
+	struct power_supply_config psy_cfg = { 0 };
 
 	cw_bat = devm_kzalloc(&client->dev, sizeof(*cw_bat), GFP_KERNEL);
 	if (!cw_bat)
@@ -660,20 +649,20 @@ static int cw_bat_probe(struct i2c_client *client,
 
 	ret = cw2015_parse_properties(cw_bat);
 	if (ret) {
-		dev_err(cw_bat->dev, "Failed to parse cw2015 properties");
+		dev_err(cw_bat->dev, "Failed to parse cw2015 properties\n");
 		return ret;
 	}
 
 	cw_bat->regmap = devm_regmap_init_i2c(client, &cw2015_regmap_config);
 	if (IS_ERR(cw_bat->regmap)) {
-		dev_err(cw_bat->dev, "Failed to allocate regmap: %ld",
+		dev_err(cw_bat->dev, "Failed to allocate regmap: %ld\n",
 			PTR_ERR(cw_bat->regmap));
 		return PTR_ERR(cw_bat->regmap);
 	}
 
 	ret = cw_init(cw_bat);
 	if (ret) {
-		dev_err(cw_bat->dev, "Init failed: %d", ret);
+		dev_err(cw_bat->dev, "Init failed: %d\n", ret);
 		return ret;
 	}
 
@@ -681,16 +670,17 @@ static int cw_bat_probe(struct i2c_client *client,
 	psy_cfg.fwnode = dev_fwnode(cw_bat->dev);
 
 	cw_bat->rk_bat = devm_power_supply_register(&client->dev,
-		&cw2015_bat_desc, &psy_cfg);
+						    &cw2015_bat_desc,
+						    &psy_cfg);
 	if (IS_ERR(cw_bat->rk_bat)) {
-		dev_err(cw_bat->dev, "Failed to register power supply");
+		dev_err(cw_bat->dev, "Failed to register power supply\n");
 		return PTR_ERR(cw_bat->rk_bat);
 	}
 
 	ret = power_supply_get_battery_info(cw_bat->rk_bat, &cw_bat->battery);
 	if (ret) {
 		dev_warn(cw_bat->dev,
-			"No monitored battery, some properties will be missing");
+			 "No monitored battery, some properties will be missing\n");
 	}
 
 	cw_bat->battery_workqueue = create_singlethread_workqueue("rk_battery");
@@ -746,7 +736,7 @@ static struct i2c_driver cw_bat_driver = {
 		.name = "cw2015",
 		.pm = &cw_bat_pm_ops,
 	},
-	.probe = cw_bat_probe,
+	.probe_new = cw_bat_probe,
 	.remove = cw_bat_remove,
 	.id_table = cw_bat_id_table,
 };
