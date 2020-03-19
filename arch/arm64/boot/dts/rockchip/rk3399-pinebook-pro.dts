@@ -23,6 +23,11 @@
 		stdout-path = "serial2:1500000n8";
 	};
 
+	memory {
+		device_type = "memory";
+		reg = <0x0 0x00200000 0x0 0x40000000>;
+	};
+
 	backlight: edp-backlight {
 		compatible = "pwm-backlight";
 		power-supply = <&vcc_12v>;
