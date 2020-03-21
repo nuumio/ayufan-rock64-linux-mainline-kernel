@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-2.0
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
 %YAML 1.2
 ---
 $id: http://devicetree.org/schemas/power/supply/cw2015_battery.yaml#
@@ -19,8 +19,7 @@ properties:
     const: cellwise,cw2015
 
   reg:
-    items:
-      - description: i2c address
+    maxItems: 1
 
   cellwise,battery-profile:
     description: |
@@ -37,7 +36,7 @@ properties:
   cellwise,monitor-interval-ms:
     description:
       Specifies the interval in milliseconds gauge values are polled at
-    $ref: /schemas/types.yaml#/definitions/uint32
+    minimum: 250
 
   power-supplies:
     description:
