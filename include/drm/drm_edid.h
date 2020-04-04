@@ -343,9 +343,14 @@ struct drm_connector_state;
 struct drm_display_mode;
 
 int drm_edid_to_sad(struct edid *edid, struct cea_sad **sads);
+void drm_edid_to_eld(struct drm_connector *connector, struct edid *edid);
 int drm_edid_to_speaker_allocation(struct edid *edid, u8 **sadb);
 int drm_av_sync_delay(struct drm_connector *connector,
 		      const struct drm_display_mode *mode);
+struct drm_display_mode *
+drm_display_mode_from_vic_index(struct drm_connector *connector,
+				const u8 *video_db, u8 video_len,
+				u8 video_index);
 
 #ifdef CONFIG_DRM_LOAD_EDID_FIRMWARE
 struct edid *drm_load_edid_firmware(struct drm_connector *connector);

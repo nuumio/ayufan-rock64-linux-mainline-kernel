@@ -3590,7 +3590,7 @@ static u8 svd_to_vic(u8 svd)
 	return svd;
 }
 
-static struct drm_display_mode *
+struct drm_display_mode *
 drm_display_mode_from_vic_index(struct drm_connector *connector,
 				const u8 *video_db, u8 video_len,
 				u8 video_index)
@@ -3615,6 +3615,7 @@ drm_display_mode_from_vic_index(struct drm_connector *connector,
 
 	return newmode;
 }
+EXPORT_SYMBOL(drm_display_mode_from_vic_index);
 
 /*
  * do_y420vdb_modes - Parse YCBCR 420 only modes
@@ -4399,7 +4400,7 @@ static void clear_eld(struct drm_connector *connector)
  * Fill the ELD (EDID-Like Data) buffer for passing to the audio driver. The
  * HDCP and Port_ID ELD fields are left for the graphics driver to fill in.
  */
-static void drm_edid_to_eld(struct drm_connector *connector, struct edid *edid)
+void drm_edid_to_eld(struct drm_connector *connector, struct edid *edid)
 {
 	uint8_t *eld = connector->eld;
 	u8 *cea;
@@ -4483,6 +4484,7 @@ static void drm_edid_to_eld(struct drm_connector *connector, struct edid *edid)
 	DRM_DEBUG_KMS("ELD size %d, SAD count %d\n",
 		      drm_eld_size(eld), total_sad_count);
 }
+EXPORT_SYMBOL(drm_edid_to_eld);
 
 /**
  * drm_edid_to_sad - extracts SADs from EDID
