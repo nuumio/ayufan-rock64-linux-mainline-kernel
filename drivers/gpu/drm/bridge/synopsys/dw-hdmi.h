@@ -6,6 +6,121 @@
 #ifndef __DW_HDMI_H__
 #define __DW_HDMI_H__
 
+#include <drm/drm_bridge.h>
+
+struct hdmi_vmode {
+	bool mdataenablepolarity;
+
+	unsigned int mpixelclock;
+	unsigned int mpixelrepetitioninput;
+	unsigned int mpixelrepetitionoutput;
+	unsigned int mtmdsclock;
+};
+
+struct hdmi_data_info {
+	unsigned int enc_in_bus_format;
+	unsigned int enc_out_bus_format;
+	unsigned int enc_in_encoding;
+	unsigned int enc_out_encoding;
+	unsigned int pix_repet_factor;
+	unsigned int hdcp_enable;
+	struct hdmi_vmode video_mode;
+	bool rgb_limited_range;
+};
+
+struct dw_hdmi_i2c {
+	struct i2c_adapter	adap;
+
+	struct mutex		lock;	/* used to serialize data transfers */
+	struct completion	cmp;
+	u8			stat;
+
+	u8			slave_reg;
+	bool			is_regaddr;
+	bool			is_segment;
+
+	unsigned int		scl_high_ns;
+	unsigned int		scl_low_ns;
+};
+
+struct dw_hdmi_phy_data {
+	enum dw_hdmi_phy_type type;
+	const char *name;
+	unsigned int gen;
+	bool has_svsret;
+	int (*configure)(struct dw_hdmi *hdmi,
+			 const struct dw_hdmi_plat_data *pdata,
+			 unsigned long mpixelclock);
+};
+
+struct dw_hdmi {
+	struct drm_connector connector;
+	struct drm_bridge bridge;
+	struct drm_bridge_state *bridge_state;
+
+	unsigned int version;
+
+	struct platform_device *audio;
+	struct platform_device *cec;
+	struct device *dev;
+	struct clk *isfr_clk;
+	struct clk *iahb_clk;
+	struct clk *cec_clk;
+	struct dw_hdmi_i2c *i2c;
+
+	struct hdmi_data_info hdmi_data;
+	const struct dw_hdmi_plat_data *plat_data;
+
+	int vic;
+
+	struct edid *cached_edid;
+
+	struct {
+		const struct dw_hdmi_phy_ops *ops;
+		const char *name;
+		void *data;
+		bool enabled;
+	} phy;
+
+	struct drm_display_mode previous_mode;
+
+	struct i2c_adapter *ddc;
+	void __iomem *regs;
+	bool sink_is_hdmi;
+	bool sink_has_audio;
+
+	struct pinctrl *pinctrl;
+	struct pinctrl_state *default_state;
+	struct pinctrl_state *unwedge_state;
+
+	struct mutex mutex;		/* for state below and previous_mode */
+	enum drm_connector_force force;	/* mutex-protected force state */
+	bool disabled;			/* DRM has disabled our bridge */
+	bool bridge_is_on;		/* indicates the bridge is on */
+	bool rxsense;			/* rxsense state */
+	bool force_setup;		/* force dw_hdmi_setup to run even if bridge is off */
+	u8 phy_mask;			/* desired phy int mask settings */
+	u8 mc_clkdis;			/* clock disable register */
+
+	spinlock_t audio_lock;
+	struct mutex audio_mutex;
+	unsigned int sample_rate;
+	unsigned int audio_cts;
+	unsigned int audio_n;
+	bool audio_enable;
+
+	unsigned int reg_shift;
+	struct regmap *regm;
+	void (*enable_audio)(struct dw_hdmi *hdmi);
+	void (*disable_audio)(struct dw_hdmi *hdmi);
+
+	struct cec_notifier *cec_notifier;
+
+	hdmi_codec_plugged_cb plugged_cb;
+	struct device *codec_dev;
+	enum drm_connector_status last_connector_status;
+};
+
 /* Identification Registers */
 #define HDMI_DESIGN_ID                          0x0000
 #define HDMI_REVISION_ID                        0x0001
