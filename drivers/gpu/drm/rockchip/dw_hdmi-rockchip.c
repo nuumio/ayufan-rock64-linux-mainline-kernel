@@ -464,6 +464,9 @@ static u32 *dw_hdmi_rockchip_get_input_bus_fmts(struct drm_bridge *bridge,
 }
 
 static const struct drm_bridge_funcs dw_hdmi_rockchip_bridge_funcs = {
+	.atomic_duplicate_state = drm_atomic_helper_bridge_duplicate_state,
+	.atomic_destroy_state = drm_atomic_helper_bridge_destroy_state,
+	.atomic_reset = drm_atomic_helper_bridge_reset,
 	.mode_valid = dw_hdmi_rockchip_bridge_mode_valid,
 	.mode_set = dw_hdmi_rockchip_bridge_mode_set,
 	.enable = dw_hdmi_rockchip_bridge_enable,
