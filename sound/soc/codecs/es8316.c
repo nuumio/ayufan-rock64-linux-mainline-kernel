@@ -700,10 +700,12 @@ static void es8316_disable_jack_detect(struct snd_soc_component *component)
 static int es8316_set_jack(struct snd_soc_component *component,
 			   struct snd_soc_jack *jack, void *data)
 {
-	if (jack)
-		es8316_enable_jack_detect(component, jack);
-	else
-		es8316_disable_jack_detect(component);
+	if (component) {
+		if (jack)
+			es8316_enable_jack_detect(component, jack);
+		else
+			es8316_disable_jack_detect(component);
+	}
 
 	return 0;
 }
