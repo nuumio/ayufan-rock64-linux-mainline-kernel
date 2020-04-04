@@ -778,7 +778,7 @@ static int cdn_dp_audio_hw_params(struct device *dev,  void *data,
 
 	mutex_lock(&dp->lock);
 	if (!dp->active) {
-		ret = -ENODEV;
+		ret = 0;
 		goto out;
 	}
 
@@ -828,7 +828,7 @@ static int cdn_dp_audio_digital_mute(struct device *dev, void *data,
 
 	mutex_lock(&dp->lock);
 	if (!dp->active) {
-		ret = -ENODEV;
+		ret = 0;
 		goto out;
 	}
 
@@ -888,7 +888,7 @@ static int cdn_dp_request_firmware(struct cdn_dp_device *dp)
 	mutex_unlock(&dp->lock);
 
 	while (time_before(jiffies, timeout)) {
-		ret = request_firmware(&dp->fw, CDN_DP_FIRMWARE, dp->dev);
+		ret = request_firmware_direct(&dp->fw, CDN_DP_FIRMWARE, dp->dev);
 		if (ret == -ENOENT) {
 			msleep(sleep);
 			sleep *= 2;
