@@ -159,9 +159,13 @@ struct vop {
 	struct clk *dclk;
 	/* vop share memory frequency */
 	struct clk *aclk;
+	/* vop source handling, optional */
+	struct clk *dclk_source;
 
 	/* vop dclk reset */
 	struct reset_control *dclk_rst;
+
+	struct rockchip_dclk_pll *pll;
 
 	/* optional internal rgb encoder */
 	struct rockchip_rgb *rgb;
@@ -1239,6 +1243,12 @@ static void vop_crtc_atomic_enable(struct drm_crtc *crtc,
 	VOP_REG_SET(vop, output, pin_pol, pin_pol);
 	VOP_REG_SET(vop, output, mipi_dual_channel_en, 0);
 
+	if (vop->dclk_source && vop->pll && vop->pll->pll) {
+		if (clk_set_parent(vop->dclk_source, vop->pll->pll))
+			DRM_DEV_ERROR(vop->dev,
+				      "failed to set dclk's parents\n");
+	}
+
 	switch (s->output_type) {
 	case DRM_MODE_CONNECTOR_LVDS:
 		VOP_REG_SET(vop, output, rgb_dclk_pol, 1);
@@ -1360,6 +1370,41 @@ static void vop_wait_for_irq_handler(struct vop *vop)
 	synchronize_irq(vop->irq);
 }
 
+static void vop_dclk_source_generate(struct drm_crtc *crtc,
+				     struct drm_crtc_state *crtc_state)
+{
+	struct rockchip_drm_private *private = crtc->dev->dev_private;
+	struct rockchip_crtc_state *s = to_rockchip_crtc_state(crtc_state);
+	struct rockchip_crtc_state *old_s = to_rockchip_crtc_state(crtc->state);
+	struct vop *vop = to_vop(crtc);
+	struct rockchip_dclk_pll *old_pll = vop->pll;
+
+	if (!vop->dclk_source)
+		return;
+
+	if (crtc_state->active) {
+		WARN_ON(vop->pll && !vop->pll->use_count);
+		if (!vop->pll || vop->pll->use_count > 1 ||
+		    s->output_type != old_s->output_type) {
+			if (vop->pll)
+				vop->pll->use_count--;
+
+			if (s->output_type != DRM_MODE_CONNECTOR_HDMIA &&
+			    !private->default_pll.use_count)
+				vop->pll = &private->default_pll;
+			else
+				vop->pll = &private->hdmi_pll;
+
+			vop->pll->use_count++;
+		}
+	} else if (vop->pll) {
+		vop->pll->use_count--;
+		vop->pll = NULL;
+	}
+	if (vop->pll != old_pll)
+		crtc_state->mode_changed = true;
+}
+
 static int vop_crtc_atomic_check(struct drm_crtc *crtc,
 				 struct drm_crtc_state *crtc_state)
 {
@@ -1376,6 +1421,8 @@ static int vop_crtc_atomic_check(struct drm_crtc *crtc,
 			return -EINVAL;
 		}
 	}
+
+	vop_dclk_source_generate(crtc, crtc_state);
 
 	return 0;
 }
@@ -2041,6 +2088,16 @@ static int vop_bind(struct device *dev, struct device *master, void *data)
 	vop->regsbak = devm_kzalloc(dev, vop->len, GFP_KERNEL);
 	if (!vop->regsbak)
 		return -ENOMEM;
+
+	vop->dclk_source = devm_clk_get(vop->dev, "dclk_source");
+	if (PTR_ERR(vop->dclk_source) == -ENOENT) {
+		vop->dclk_source = NULL;
+	} else if (PTR_ERR(vop->dclk_source) == -EPROBE_DEFER) {
+		return -EPROBE_DEFER;
+	} else if (IS_ERR(vop->dclk_source)) {
+		dev_err(vop->dev, "failed to get dclk source parent\n");
+		return PTR_ERR(vop->dclk_source);
+	}
 
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0) {

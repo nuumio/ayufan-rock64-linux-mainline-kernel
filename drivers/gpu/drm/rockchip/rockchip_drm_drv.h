@@ -24,6 +24,11 @@ struct drm_device;
 struct drm_connector;
 struct iommu_domain;
 
+struct rockchip_dclk_pll {
+	struct clk *pll;
+	unsigned int use_count;
+};
+
 struct rockchip_crtc_state {
 	struct drm_crtc_state base;
 	int output_type;
@@ -51,6 +56,8 @@ struct rockchip_drm_private {
 	struct drm_mm mm;
 	struct list_head psr_list;
 	struct mutex psr_list_lock;
+	struct rockchip_dclk_pll default_pll;
+	struct rockchip_dclk_pll hdmi_pll;
 };
 
 int rockchip_drm_dma_attach_device(struct drm_device *drm_dev,
