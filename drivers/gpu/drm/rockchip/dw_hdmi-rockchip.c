@@ -14,6 +14,8 @@
 #include <drm/drm_edid.h>
 #include <drm/drm_of.h>
 #include <drm/drm_probe_helper.h>
+#include <drm/drm_simple_kms_helper.h>
+#include "../bridge/synopsys/dw-hdmi.h"
 
 #include "rockchip_drm_drv.h"
 #include "rockchip_drm_vop.h"
@@ -26,25 +28,34 @@
 #define RK3228_HDMI_SDA_VSEL		BIT(5)
 #define RK3228_HDMI_SCL_VSEL		BIT(4)
 
+#define RK3228_HDMI_DDC_MASK_EN		((3 << 13) | (3 << (13 + 16)))
+#define RK3228_HDMI_IO_3V		((7 << 4) | (7 << (4 + 16)))
+
 #define RK3288_GRF_SOC_CON6		0x025C
 #define RK3288_HDMI_LCDC_SEL		BIT(4)
-#define RK3328_GRF_SOC_CON2		0x0408
 
 #define RK3328_HDMI_SDAIN_MSK		BIT(11)
 #define RK3328_HDMI_SCLIN_MSK		BIT(10)
 #define RK3328_HDMI_HPD_IOE		BIT(2)
+#define RK3328_GRF_SOC_CON2		0x0408
 #define RK3328_GRF_SOC_CON3		0x040c
+#define RK3328_GRF_SOC_CON4		0x0410
 /* need to be unset if hdmi or i2c should control voltage */
 #define RK3328_HDMI_SDA5V_GRF		BIT(15)
 #define RK3328_HDMI_SCL5V_GRF		BIT(14)
 #define RK3328_HDMI_HPD5V_GRF		BIT(13)
 #define RK3328_HDMI_CEC5V_GRF		BIT(12)
-#define RK3328_GRF_SOC_CON4		0x0410
 #define RK3328_HDMI_HPD_SARADC		BIT(13)
 #define RK3328_HDMI_CEC_5V		BIT(11)
 #define RK3328_HDMI_SDA_5V		BIT(10)
 #define RK3328_HDMI_SCL_5V		BIT(9)
+#define RK3328_HDMI_HPD_3V		(BIT(8 + 16) | BIT(13 + 16))
 #define RK3328_HDMI_HPD_5V		BIT(8)
+
+#define RK3328_HDMI_DDC_MASK_EN		((3 << 10) | (3 << (10 + 16)))
+#define RK3328_HDMI_IO_CTRL		(0xf0000000 | BIT(13) | BIT(12))
+#define RK3328_HDMI_IO_3V		(7 << (9 + 16))
+#define RK3328_HDMI_IO_5V		((7 << 9) | (3 << (9 + 16)))
 
 #define RK3399_GRF_SOC_CON20		0x6250
 #define RK3399_HDMI_LCDC_SEL		BIT(6)
@@ -56,12 +67,14 @@
  * @lcdsel_grf_reg: grf register offset of lcdc select
  * @lcdsel_big: reg value of selecting vop big for HDMI
  * @lcdsel_lit: reg value of selecting vop little for HDMI
+ * @chip_type: the number value of the chipset (ie: 3328 for RK3328)
  */
 struct rockchip_hdmi_chip_data {
 	int	lcdsel_grf_reg;
 	u32	lcdsel_big;
 	u32	lcdsel_lit;
 	bool	ycbcr_444_allowed;
+	int	chip_type;
 };
 
 struct rockchip_hdmi {
@@ -75,6 +88,8 @@ struct rockchip_hdmi {
 	struct clk *hclk_vio;
 	struct dw_hdmi *hdmi;
 	struct phy *phy;
+	unsigned long input_bus_format;
+	unsigned long output_bus_format;
 };
 
 #define to_rockchip_hdmi(x)	container_of(x, struct rockchip_hdmi, x)
@@ -160,6 +175,46 @@ static const struct dw_hdmi_mpll_config rockchip_mpll_cfg[] = {
 	}
 };
 
+static const struct dw_hdmi_mpll_config rockchip_mpll_cfg_420[] = {
+	{
+		30666000, {
+			{ 0x00b7, 0x0000 },
+			{ 0x2157, 0x0000 },
+			{ 0x40f7, 0x0000 },
+		},
+	},  {
+		92000000, {
+			{ 0x00b7, 0x0000 },
+			{ 0x2143, 0x0001 },
+			{ 0x40a3, 0x0001 },
+		},
+	},  {
+		184000000, {
+			{ 0x0073, 0x0001 },
+			{ 0x2146, 0x0002 },
+			{ 0x4062, 0x0002 },
+		},
+	},  {
+		340000000, {
+			{ 0x0052, 0x0003 },
+			{ 0x214d, 0x0003 },
+			{ 0x4065, 0x0003 },
+		},
+	},  {
+		600000000, {
+			{ 0x0041, 0x0003 },
+			{ 0x3b4d, 0x0003 },
+			{ 0x5a65, 0x0003 },
+		},
+	},  {
+		~0UL, {
+			{ 0x0000, 0x0000 },
+			{ 0x0000, 0x0000 },
+			{ 0x0000, 0x0000 },
+		},
+	}
+};
+
 static const struct dw_hdmi_curr_ctrl rockchip_cur_ctr[] = {
 	/*      pixelclk    bpp8    bpp10   bpp12 */
 	{
@@ -185,7 +240,9 @@ static const struct dw_hdmi_phy_config rockchip_phy_config[] = {
 	/*pixelclk   symbol   term   vlev*/
 	{ 74250000,  0x8009, 0x0004, 0x0272},
 	{ 148500000, 0x802b, 0x0004, 0x028d},
+	{ 165000000, 0x802b, 0x0004, 0x0209},
 	{ 297000000, 0x8039, 0x0005, 0x028d},
+	{ 594000000, 0x8039, 0x0000, 0x019d},
 	{ ~0UL,	     0x0000, 0x0000, 0x0000}
 };
 
@@ -268,10 +325,6 @@ dw_hdmi_rk3228_mode_valid(struct drm_connector *connector,
 	return MODE_OK;
 }
 
-static const struct drm_encoder_funcs dw_hdmi_rockchip_encoder_funcs = {
-	.destroy = drm_encoder_cleanup,
-};
-
 static enum drm_mode_status
 dw_hdmi_rockchip_bridge_mode_valid(struct drm_bridge *bridge,
 				   const struct drm_display_mode *mode)
@@ -301,6 +354,14 @@ dw_hdmi_rockchip_bridge_mode_set(struct drm_bridge *bridge,
 		phy_set_bus_width(hdmi->phy, s->bus_width);
 
 	clk_set_rate(hdmi->vpll_clk, adjusted_mode->clock * 1000);
+}
+
+static void dw_hdmi_rockchip_bridge_disable(struct drm_bridge *bridge)
+{
+	struct rockchip_hdmi *hdmi = to_rockchip_hdmi(bridge);
+
+	if (hdmi->phy)
+		phy_set_bus_width(hdmi->phy, 8);
 }
 
 static void dw_hdmi_rockchip_bridge_enable(struct drm_bridge *bridge)
@@ -337,8 +398,10 @@ static void dw_hdmi_rockchip_bridge_enable(struct drm_bridge *bridge)
 static bool is_rgb(u32 format)
 {
 	switch (format) {
-	case MEDIA_BUS_FMT_RGB101010_1X30:
 	case MEDIA_BUS_FMT_RGB888_1X24:
+	case MEDIA_BUS_FMT_RGB101010_1X30:
+	case MEDIA_BUS_FMT_RGB121212_1X36:
+	case MEDIA_BUS_FMT_RGB161616_1X48:
 		return true;
 	default:
 		return false;
@@ -348,8 +411,10 @@ static bool is_rgb(u32 format)
 static bool is_yuv444(u32 format)
 {
 	switch (format) {
-	case MEDIA_BUS_FMT_YUV10_1X30:
 	case MEDIA_BUS_FMT_YUV8_1X24:
+	case MEDIA_BUS_FMT_YUV10_1X30:
+	case MEDIA_BUS_FMT_YUV12_1X36:
+	case MEDIA_BUS_FMT_YUV16_1X48:
 		return true;
 	default:
 		return false;
@@ -359,8 +424,10 @@ static bool is_yuv444(u32 format)
 static bool is_yuv420(u32 format)
 {
 	switch (format) {
-	case MEDIA_BUS_FMT_UYYVYY10_0_5X30:
 	case MEDIA_BUS_FMT_UYYVYY8_0_5X24:
+	case MEDIA_BUS_FMT_UYYVYY10_0_5X30:
+	case MEDIA_BUS_FMT_UYYVYY12_0_5X36:
+	case MEDIA_BUS_FMT_UYYVYY16_0_5X48:
 		return true;
 	default:
 		return false;
@@ -370,9 +437,10 @@ static bool is_yuv420(u32 format)
 static bool is_10bit(u32 format)
 {
 	switch (format) {
-	case MEDIA_BUS_FMT_UYYVYY10_0_5X30:
 	case MEDIA_BUS_FMT_RGB101010_1X30:
 	case MEDIA_BUS_FMT_YUV10_1X30:
+	case MEDIA_BUS_FMT_UYVY10_1X20:
+	case MEDIA_BUS_FMT_UYYVYY10_0_5X30:
 		return true;
 	default:
 		return false;
@@ -385,6 +453,7 @@ dw_hdmi_rockchip_bridge_atomic_check(struct drm_bridge *bridge,
 				     struct drm_crtc_state *crtc_state,
 				     struct drm_connector_state *conn_state)
 {
+	struct rockchip_hdmi *hdmi = to_rockchip_hdmi(bridge);
 	struct rockchip_crtc_state *s = to_rockchip_crtc_state(crtc_state);
 	struct drm_atomic_state *state = bridge_state->base.state;
 	struct drm_crtc_state *old_crtc_state;
@@ -392,31 +461,36 @@ dw_hdmi_rockchip_bridge_atomic_check(struct drm_bridge *bridge,
 	struct drm_bridge *next_bridge;
 	struct drm_bridge_state *next_bridge_state;
 	u32 format = bridge_state->output_bus_cfg.format;
+	u32 next_format = format;
+
+	next_bridge = drm_bridge_get_next_bridge(bridge);
+	if (next_bridge) {
+		next_bridge_state = drm_atomic_get_new_bridge_state(state, next_bridge);
+		next_format = next_bridge_state->output_bus_cfg.format;
+	}
 
 	s->output_mode = ROCKCHIP_OUT_MODE_AAAA;
 	s->output_type = DRM_MODE_CONNECTOR_HDMIA;
 	s->output_bpc = 10;
 	s->bus_format = format;
 
-	next_bridge = drm_bridge_get_next_bridge(bridge);
-	if (next_bridge) {
-		next_bridge_state = drm_atomic_get_new_bridge_state(state,
-								next_bridge);
-		format = next_bridge_state->output_bus_cfg.format;
-	}
-
-	s->bus_width = is_10bit(format) ? 10 : 8;
-
-	if (is_yuv420(format)) {
+	s->bus_width = is_10bit(next_format) ? 10 : 8;
+	if (is_yuv420(next_format)) {
 		s->output_mode = ROCKCHIP_OUT_MODE_YUV420;
 		s->bus_width /= 2;
 	}
 
-	old_crtc_state = drm_atomic_get_old_crtc_state(state, conn_state->crtc);
-	if (old_crtc_state && !crtc_state->mode_changed) {
-		old_state = to_rockchip_crtc_state(old_crtc_state);
-		if (s->bus_format != old_state->bus_format ||
-		    s->bus_width != old_state->bus_width)
+	hdmi->input_bus_format = bridge_state->input_bus_cfg.format;
+	hdmi->output_bus_format = format;
+
+	if (!crtc_state->mode_changed) {
+		old_crtc_state = drm_atomic_get_old_crtc_state(state, conn_state->crtc);
+		if (old_crtc_state) {
+			old_state = to_rockchip_crtc_state(old_crtc_state);
+			if (s->bus_format != old_state->bus_format ||
+			    s->bus_width != old_state->bus_width)
+				crtc_state->mode_changed = true;
+		} else
 			crtc_state->mode_changed = true;
 	}
 
@@ -470,25 +544,28 @@ static const struct drm_bridge_funcs dw_hdmi_rockchip_bridge_funcs = {
 	.mode_valid = dw_hdmi_rockchip_bridge_mode_valid,
 	.mode_set = dw_hdmi_rockchip_bridge_mode_set,
 	.enable = dw_hdmi_rockchip_bridge_enable,
+	.disable = dw_hdmi_rockchip_bridge_disable,
 	.atomic_check = dw_hdmi_rockchip_bridge_atomic_check,
 	.atomic_get_input_bus_fmts = dw_hdmi_rockchip_get_input_bus_fmts,
 };
+
+static void dw_hdmi_rockchip_genphy_disable(struct dw_hdmi *dw_hdmi, void *data)
+{
+	struct rockchip_hdmi *hdmi = (struct rockchip_hdmi *)data;
+
+	while (hdmi->phy->power_count > 0)
+		phy_power_off(hdmi->phy);
+}
 
 static int dw_hdmi_rockchip_genphy_init(struct dw_hdmi *dw_hdmi, void *data,
 			     struct drm_display_mode *mode)
 {
 	struct rockchip_hdmi *hdmi = (struct rockchip_hdmi *)data;
 
+	dw_hdmi_rockchip_genphy_disable(dw_hdmi, data);
 	dw_hdmi_set_high_tmds_clock_ratio(dw_hdmi);
 
 	return phy_power_on(hdmi->phy);
-}
-
-static void dw_hdmi_rockchip_genphy_disable(struct dw_hdmi *dw_hdmi, void *data)
-{
-	struct rockchip_hdmi *hdmi = (struct rockchip_hdmi *)data;
-
-	phy_power_off(hdmi->phy);
 }
 
 static void dw_hdmi_rk3228_setup_hpd(struct dw_hdmi *dw_hdmi, void *data)
@@ -565,6 +642,7 @@ static const struct dw_hdmi_phy_ops rk3228_hdmi_phy_ops = {
 
 static struct rockchip_hdmi_chip_data rk3228_chip_data = {
 	.lcdsel_grf_reg = -1,
+	.chip_type = 3228,
 };
 
 static const struct dw_hdmi_plat_data rk3228_hdmi_drv_data = {
@@ -579,6 +657,7 @@ static struct rockchip_hdmi_chip_data rk3288_chip_data = {
 	.lcdsel_grf_reg = RK3288_GRF_SOC_CON6,
 	.lcdsel_big = HIWORD_UPDATE(0, RK3288_HDMI_LCDC_SEL),
 	.lcdsel_lit = HIWORD_UPDATE(RK3288_HDMI_LCDC_SEL, RK3288_HDMI_LCDC_SEL),
+	.chip_type = 3288,
 };
 
 static const struct dw_hdmi_plat_data rk3288_hdmi_drv_data = {
@@ -600,6 +679,7 @@ static const struct dw_hdmi_phy_ops rk3328_hdmi_phy_ops = {
 static struct rockchip_hdmi_chip_data rk3328_chip_data = {
 	.lcdsel_grf_reg = -1,
 	.ycbcr_444_allowed = true,
+	.chip_type = 3328,
 };
 
 static const struct dw_hdmi_plat_data rk3328_hdmi_drv_data = {
@@ -616,11 +696,13 @@ static struct rockchip_hdmi_chip_data rk3399_chip_data = {
 	.lcdsel_grf_reg = RK3399_GRF_SOC_CON20,
 	.lcdsel_big = HIWORD_UPDATE(0, RK3399_HDMI_LCDC_SEL),
 	.lcdsel_lit = HIWORD_UPDATE(RK3399_HDMI_LCDC_SEL, RK3399_HDMI_LCDC_SEL),
+	.chip_type = 3399,
 };
 
 static const struct dw_hdmi_plat_data rk3399_hdmi_drv_data = {
 	.mode_valid = dw_hdmi_rockchip_mode_valid,
 	.mpll_cfg   = rockchip_mpll_cfg,
+	.mpll_cfg_420 = rockchip_mpll_cfg_420,
 	.cur_ctr    = rockchip_cur_ctr,
 	.phy_config = rockchip_phy_config,
 	.phy_data = &rk3399_chip_data,
@@ -643,6 +725,70 @@ static const struct of_device_id dw_hdmi_rockchip_dt_ids[] = {
 	{},
 };
 MODULE_DEVICE_TABLE(of, dw_hdmi_rockchip_dt_ids);
+
+static unsigned long
+dw_hdmi_rockchip_get_input_bus_format(void *data)
+{
+	struct rockchip_hdmi *hdmi = (struct rockchip_hdmi *)data;
+	return hdmi->input_bus_format;
+}
+
+static unsigned long
+dw_hdmi_rockchip_get_output_bus_format(void *data)
+{
+	struct rockchip_hdmi *hdmi = (struct rockchip_hdmi *)data;
+	return hdmi->output_bus_format;
+}
+
+void
+dw_hdmi_rockchip_plugged_event(void *data, enum drm_connector_status status)
+{
+	struct rockchip_hdmi *hdmi = (struct rockchip_hdmi *)data;
+
+	/*
+	   When some RK3328 (such as Rock64) first bootup, color can be incorrect.
+	   Reproduced when display powered on immediately before board, as well as
+	   when display powered back on after being off for awhile.
+	   Force dw_hdmi_setup to run again.
+	*/
+	if (hdmi->hdmi && hdmi->chip_data->chip_type == 3328) {
+		hdmi->hdmi->force_setup = true;
+	}
+}
+
+static int dw_hdmi_rockchip_init(struct rockchip_hdmi *hdmi)
+{
+	int ret = clk_prepare_enable(hdmi->grf_clk);
+	if (ret < 0) {
+		dev_err(hdmi->dev, "failed to enable grfclk %d\n", ret);
+		return -EPROBE_DEFER;
+	}
+	switch (hdmi->chip_data->chip_type) {
+	case 3328:
+		/* Map HPD pin to 3V io */
+		regmap_write(hdmi->regmap,
+			     RK3328_GRF_SOC_CON4,
+			     RK3328_HDMI_IO_3V |
+			     RK3328_HDMI_HPD_3V);
+		/* Map ddc pin to 5V io */
+		regmap_write(hdmi->regmap,
+			     RK3328_GRF_SOC_CON3,
+			     RK3328_HDMI_IO_CTRL);
+		regmap_write(hdmi->regmap,
+			     RK3328_GRF_SOC_CON2,
+			     RK3328_HDMI_DDC_MASK_EN |
+			     BIT(18));
+		break;
+	case 3228:
+		regmap_write(hdmi->regmap, RK3228_GRF_SOC_CON2,
+			     RK3228_HDMI_DDC_MASK_EN);
+		regmap_write(hdmi->regmap, RK3228_GRF_SOC_CON6,
+			     RK3228_HDMI_IO_3V);
+		break;
+	}
+	clk_disable_unprepare(hdmi->grf_clk);
+	return 0;
+}
 
 static int dw_hdmi_rockchip_bind(struct device *dev, struct device *master,
 				 void *data)
@@ -671,7 +817,12 @@ static int dw_hdmi_rockchip_bind(struct device *dev, struct device *master,
 
 	hdmi->dev = &pdev->dev;
 	hdmi->chip_data = plat_data->phy_data;
+
 	plat_data->phy_data = hdmi;
+	plat_data->get_input_bus_format = dw_hdmi_rockchip_get_input_bus_format;
+	plat_data->get_output_bus_format = dw_hdmi_rockchip_get_output_bus_format;
+	plat_data->plugged_event = dw_hdmi_rockchip_plugged_event;
+
 	encoder = &hdmi->encoder;
 
 	encoder->possible_crtcs = drm_of_find_possible_crtcs(drm, dev->of_node);
@@ -712,8 +863,13 @@ static int dw_hdmi_rockchip_bind(struct device *dev, struct device *master,
 		return ret;
 	}
 
-	drm_encoder_init(drm, encoder, &dw_hdmi_rockchip_encoder_funcs,
-			 DRM_MODE_ENCODER_TMDS, NULL);
+	if (hdmi->chip_data->chip_type == 3328 || hdmi->chip_data->chip_type == 3228) {
+		ret = dw_hdmi_rockchip_init(hdmi);
+		if (ret < 0)
+			return ret;
+	}
+
+	drm_simple_encoder_init(drm, encoder, DRM_MODE_ENCODER_TMDS);
 
 	hdmi->bridge.funcs = &dw_hdmi_rockchip_bridge_funcs;
 	drm_bridge_attach(encoder, &hdmi->bridge, NULL, 0);
@@ -723,7 +879,7 @@ static int dw_hdmi_rockchip_bind(struct device *dev, struct device *master,
 	hdmi->hdmi = dw_hdmi_probe(pdev, plat_data);
 
 	/*
-	 * If dw_hdmi_bind() fails we'll never call dw_hdmi_unbind(),
+	 * If dw_hdmi_probe() fails we'll never call dw_hdmi_unbind(),
 	 * which would have called the encoder cleanup.  Do it manually.
 	 */
 	if (IS_ERR(hdmi->hdmi)) {
