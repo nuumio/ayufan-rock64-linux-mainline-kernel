@@ -10,7 +10,10 @@
 #include "rk3399-opp.dtsi"
 
 / {
+	compatible = "pine64,rockpro64", "rockchip,rk3399";
+
 	chosen {
+		bootargs = "mmc_cmdqueue=0 earlycon=uart8250,mmio32,0xff1a0000";
 		stdout-path = "serial2:1500000n8";
 	};
 
@@ -38,27 +41,26 @@
 
 	leds {
 		compatible = "gpio-leds";
-		pinctrl-names = "default";
-		pinctrl-0 = <&work_led_gpio>, <&diy_led_gpio>;
 
-		work-led {
-			label = "work";
+		led0 {
+			gpios = <&gpio0 RK_PA2 GPIO_ACTIVE_LOW>;
+			linux,default-trigger = "heartbeat";
 			default-state = "on";
-			gpios = <&gpio0 RK_PB3 GPIO_ACTIVE_HIGH>;
 		};
 
-		diy-led {
-			label = "diy";
-			default-state = "off";
-			gpios = <&gpio0 RK_PA2 GPIO_ACTIVE_HIGH>;
+		led1 {
+			gpios = <&gpio0 RK_PB3 GPIO_ACTIVE_LOW>;
+			linux,default-trigger = "disk-activity";
 		};
 	};
 
-	fan: pwm-fan {
+	fan0: pwm-fan {
 		compatible = "pwm-fan";
+		pwms = <&pwm1 0 10000 0>;
+		cooling-min-state = <0>;
+		cooling-max-state = <3>;
 		#cooling-cells = <2>;
-		fan-supply = <&vcc12v_dcin>;
-		pwms = <&pwm1 0 50000 0>;
+		cooling-levels = <0 102 170 230>;
 	};
 
 	sdio_pwrseq: sdio-pwrseq {
@@ -70,10 +72,45 @@
 		reset-gpios = <&gpio0 RK_PB2 GPIO_ACTIVE_LOW>;
 	};
 
-	sound {
-		compatible = "audio-graph-card";
-		label = "rockchip,rk3399";
-		dais = <&i2s1_p0>;
+	es8316-sound {
+		status = "okay";
+		compatible = "simple-audio-card";
+		simple-audio-card,name = "rockchip,es8316-codec";
+		simple-audio-card,format = "i2s";
+		simple-audio-card,mclk-fs = <256>;
+		simple-audio-card,widgets =
+			"Microphone", "Mic Jack",
+			"Headphone", "Headphone Jack";
+		simple-audio-card,routing =
+			"Headphone Jack", "HPOL",
+			"Headphone Jack", "HPOR",
+			"Mic Jack", "MIC1";
+
+		simple-audio-card,cpu {
+			sound-dai = <&i2s1>;
+		};
+
+		simple-audio-card,codec {
+			sound-dai = <&es8316>;
+		};
+	};
+
+	spdif-sound {
+		status = "okay";
+		compatible = "simple-audio-card";
+		simple-audio-card,name = "ROCKCHIP,SPDIF";
+		simple-audio-card,cpu {
+			sound-dai = <&spdif>;
+		};
+		simple-audio-card,codec {
+			sound-dai = <&spdif_dit>;
+		};
+	};
+
+	spdif_dit: spdif-dit {
+		compatible = "linux,spdif-dit";
+		#sound-dai-cells = <0>;
+		status = "okay";
 	};
 
 	vcc12v_dcin: vcc12v-dcin {
@@ -93,6 +130,17 @@
 		regulator-boot-on;
 		regulator-min-microvolt = <1800000>;
 		regulator-max-microvolt = <1800000>;
+		vin-supply = <&vcc_1v8>;
+	};
+
+	vcc1v8_wifi: vcc1v8-wifi {
+		compatible = "regulator-fixed";
+		enable-active-high;
+		gpios = <&gpio0 RK_PB5 GPIO_ACTIVE_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&wifi_pwr>;
+		regulator-name = "vcc1v8_wifi";
+		regulator-boot-on;
 		vin-supply = <&vcc_1v8>;
 	};
 
@@ -173,6 +221,38 @@
 	};
 };
 
+&cooling_maps {
+	map2 {
+		trip = <&cpu_alert0>;
+		cooling-device = <&fan0 0 1>;
+	};
+	map3 {
+		trip = <&cpu_alert1>;
+		cooling-device = <&fan0 1 2>;
+	};
+	map4 {
+		trip = <&cpu_crit>;
+		cooling-device = <&fan0 2 3>;
+	};
+};
+
+&cpu_alert0 {
+	temperature = <75000>;
+};
+
+&cpu_alert1 {
+	temperature = <80000>;
+};
+
+&cpu_crit {
+	temperature = <85000>;
+};
+
+&cdn_dp {
+	status = "okay";
+	extcon = <&fusb0>;
+};
+
 &cpu_l0 {
 	cpu-supply = <&vdd_cpu_l>;
 };
@@ -218,9 +298,8 @@
 };
 
 &hdmi {
-	ddc-i2c-bus = <&i2c3>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&hdmi_cec>;
+	pinctrl-0 = <&hdmi_i2c_xfer>, <&hdmi_cec>;
 	status = "okay";
 };
 
@@ -428,6 +507,8 @@
 		fcs,suspend-voltage-selector = <1>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&vsel1_gpio>;
+		vsel-gpios = <&gpio1 RK_PC1 GPIO_ACTIVE_HIGH>;
+		regulator-compatible = "fan53555-reg";
 		regulator-name = "vdd_cpu_b";
 		regulator-min-microvolt = <712500>;
 		regulator-max-microvolt = <1500000>;
@@ -447,12 +528,16 @@
 		fcs,suspend-voltage-selector = <1>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&vsel2_gpio>;
+		vsel-gpios = <&gpio1 RK_PB6 GPIO_ACTIVE_HIGH>;
+		regulator-compatible = "fan53555-reg";
 		regulator-name = "vdd_gpu";
 		regulator-min-microvolt = <712500>;
 		regulator-max-microvolt = <1500000>;
+		regulator-enable-ramp-delay = <300>;
 		regulator-ramp-delay = <1000>;
 		regulator-always-on;
 		regulator-boot-on;
+		regulator-initial-mode = <1>; /* 1:force PWM 2:auto */
 		vin-supply = <&vcc5v0_sys>;
 
 		regulator-state-mem {
@@ -462,14 +547,9 @@
 };
 
 &i2c1 {
-	i2c-scl-rising-time-ns = <300>;
-	i2c-scl-falling-time-ns = <15>;
-	status = "okay";
-};
-
-&i2c3 {
-	i2c-scl-rising-time-ns = <450>;
-	i2c-scl-falling-time-ns = <15>;
+	clock-frequency = <100000>;
+	i2c-scl-rising-time-ns = <168>;
+	i2c-scl-falling-time-ns = <4>;
 	status = "okay";
 };
 
@@ -479,10 +559,10 @@
 	status = "okay";
 
 	fusb0: typec-portc@22 {
-		compatible = "fcs,fusb302";
+		compatible = "fairchild,fusb302";
 		reg = <0x22>;
-		interrupt-parent = <&gpio1>;
-		interrupts = <RK_PA2 IRQ_TYPE_LEVEL_LOW>;
+		vbus-5v-gpios = <&gpio1 RK_PA3 GPIO_ACTIVE_HIGH>;
+		int-n-gpios = <&gpio1 RK_PA2 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&fusb0_int>;
 		vbus-supply = <&vcc5v0_typec>;
@@ -490,15 +570,13 @@
 	};
 };
 
-&i2s0 {
-	rockchip,playback-channels = <8>;
-	rockchip,capture-channels = <8>;
+&i2c8 {
 	status = "okay";
 };
 
 &i2s1 {
-	rockchip,playback-channels = <2>;
-	rockchip,capture-channels = <2>;
+	rockchip,playback-channels = <8>;
+	rockchip,capture-channels = <8>;
 	status = "okay";
 
 	i2s1_p0: port {
@@ -518,7 +596,7 @@
 	status = "okay";
 
 	bt656-supply = <&vcc1v8_dvp>;
-	audio-supply = <&vcc_3v0>;
+	audio-supply = <&vcca3v0_codec>;
 	sdmmc-supply = <&vcc_sdio>;
 	gpio1830-supply = <&vcc_3v0>;
 };
@@ -603,6 +681,31 @@
 		};
 	};
 
+	sdio0 {
+		sdio0_bus1: sdio0-bus1 {
+			rockchip,pins =
+				<2 RK_PC4 RK_FUNC_1 &pcfg_pull_up_20ma>;
+		};
+
+		sdio0_bus4: sdio0-bus4 {
+			rockchip,pins =
+				<2 RK_PC4 RK_FUNC_1 &pcfg_pull_up_20ma>,
+				<2 RK_PC5 RK_FUNC_1 &pcfg_pull_up_20ma>,
+				<2 RK_PC6 RK_FUNC_1 &pcfg_pull_up_20ma>,
+				<2 RK_PC7 RK_FUNC_1 &pcfg_pull_up_20ma>;
+		};
+
+		sdio0_cmd: sdio0-cmd {
+			rockchip,pins =
+				<2 RK_PD0 RK_FUNC_1 &pcfg_pull_up_20ma>;
+		};
+
+		sdio0_clk: sdio0-clk {
+			rockchip,pins =
+				<2 RK_PD1 RK_FUNC_1 &pcfg_pull_none_20ma>;
+		};
+	};
+
 	sdio-pwrseq {
 		wifi_enable_h: wifi-enable-h {
 			rockchip,pins = <0 RK_PB2 RK_FUNC_GPIO &pcfg_pull_none>;
@@ -620,6 +723,16 @@
 			rockchip,pins = <4 RK_PD2 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
+
+	wireless-wlan {
+		wifi_pwr: wifi-pwr {
+			rockchip,pins = <0 RK_PB5 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+
+		wifi_host_wake_l: wifi-host-wake-l {
+			rockchip,pins = <0 RK_PA3 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+	};
 };
 
 &pwm0 {
@@ -634,12 +747,38 @@
 	status = "okay";
 };
 
+&rockchip_suspend {
+	status = "okay";
+	rockchip,sleep-debug-en = <1>;
+	rockchip,sleep-mode-config = <
+		(0
+		| RKPM_SLP_ARMPD
+		| RKPM_SLP_PERILPPD
+		| RKPM_SLP_DDR_RET
+		| RKPM_SLP_PLLPD
+		| RKPM_SLP_CENTER_PD
+		| RKPM_SLP_AP_PWROFF
+		)
+	>;
+	rockchip,pwm-regulator-config = <
+		(0
+		| PWM2_REGULATOR_EN
+		)
+	>;
+	rockchip,power-ctrl =
+		<&gpio1 RK_PC1 GPIO_ACTIVE_HIGH>,
+		<&gpio1 RK_PB6 GPIO_ACTIVE_HIGH>;
+};
+
 &saradc {
 	vref-supply = <&vcca1v8_s3>;
 	status = "okay";
 };
 
 &sdio0 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	clock-frequency = <50000000>;
 	bus-width = <4>;
 	cap-sd-highspeed;
 	cap-sdio-irq;
@@ -647,10 +786,22 @@
 	keep-power-in-suspend;
 	mmc-pwrseq = <&sdio_pwrseq>;
 	non-removable;
+	num-slots = <1>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&sdio0_bus4 &sdio0_cmd &sdio0_clk>;
 	sd-uhs-sdr104;
 	status = "okay";
+
+	brcmf: wifi@1 {
+		compatible = "brcm,bcm4329-fmac";
+		reg = <1>;
+		interrupt-parent = <&gpio0>;
+		interrupts = <RK_PA3 GPIO_ACTIVE_HIGH>;
+		interrupt-names = "host-wake";
+		brcm,drive-strength = <5>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&wifi_host_wake_l>;
+	};
 };
 
 &sdmmc {
@@ -667,8 +818,16 @@
 &sdhci {
 	bus-width = <8>;
 	mmc-hs200-1_8v;
+	keep-power-in-suspend;
+	supports-emmc;
 	non-removable;
 	status = "okay";
+};
+
+&spdif {
+	status = "okay";
+	pinctrl-0 = <&spdif_bus_1>;
+	#sound-dai-cells = <0>;
 };
 
 &spi1 {
@@ -682,6 +841,7 @@
 };
 
 &tcphy0 {
+	extcon = <&fusb0>;
 	status = "okay";
 };
 
@@ -726,6 +886,7 @@
 &uart0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart0_xfer &uart0_cts &uart0_rts>;
+	uart-has-rtscts;
 	status = "okay";
 
 	bluetooth {
@@ -768,7 +929,7 @@
 
 &usbdrd_dwc3_0 {
 	status = "okay";
-	dr_mode = "otg";
+	dr_mode = "host";
 };
 
 &usbdrd3_1 {
