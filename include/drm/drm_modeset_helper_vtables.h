@@ -1061,6 +1061,51 @@ struct drm_connector_helper_funcs {
 			    struct drm_atomic_state *state);
 
 	/**
+	 * @atomic_begin:
+	 *
+	 * Drivers should prepare for an atomic update in this hook.
+	 * Depending upon hardware this might be vblank evasion, blocking updates
+	 * by setting bits or doing preparatory work for e.g. manual update display.
+	 *
+	 * This hook is called before any plane commit functions are called.
+	 *
+	 * Note that the power state of the display pipe when this function is
+	 * called depends upon the exact helpers and calling sequence the driver
+	 * has picked. See drm_atomic_helper_commit_planes() for a discussion of
+	 * the tradeoffs and variants of plane commit helpers.
+	 *
+	 * This callback is used by the atomic modeset helpers and by the
+	 * transitional plane helpers, but it is optional.
+	 */
+	void (*atomic_begin)(struct drm_connector *connector,
+			     struct drm_connector_state *conn_state);
+
+	/**
+	 * @atomic_flush:
+	 *
+	 * Drivers should finalize an atomic update in this hook.
+	 * Depending upon hardware this might include checking that vblank evasion
+	 * was successful, unblocking updates by setting bits or setting the GO
+	 * bit to flush out all updates.
+	 *
+	 * Simple hardware or hardware with special requirements can commit and
+	 * flush out all updates for all planes from this hook and forgo all the
+	 * other commit hooks for plane updates.
+	 *
+	 * This hook is called after any plane commit functions are called.
+	 *
+	 * Note that the power state of the display pipe when this function is
+	 * called depends upon the exact helpers and calling sequence the driver
+	 * has picked. See drm_atomic_helper_commit_planes() for a discussion of
+	 * the tradeoffs and variants of plane commit helpers.
+	 *
+	 * This callback is used by the atomic modeset helpers and by the
+	 * transitional plane helpers, but it is optional.
+	 */
+	void (*atomic_flush)(struct drm_connector *connector,
+			     struct drm_connector_state *conn_state);
+
+	/**
 	 * @atomic_commit:
 	 *
 	 * This hook is to be used by drivers implementing writeback connectors
