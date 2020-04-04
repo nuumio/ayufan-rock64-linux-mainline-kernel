@@ -17,3 +17,5 @@ public:
 	.test = 1
 };
 EOF
+
+exit 1
