@@ -328,7 +328,7 @@ struct hid_item {
 /* 
  * Increase this if you need to configure more HID quirks at module load time
  */
-#define MAX_USBHID_BOOT_QUIRKS 4
+#define MAX_USBHID_BOOT_QUIRKS 40
 
 #define HID_QUIRK_INVERT			BIT(0)
 #define HID_QUIRK_NOTOUCH			BIT(1)
