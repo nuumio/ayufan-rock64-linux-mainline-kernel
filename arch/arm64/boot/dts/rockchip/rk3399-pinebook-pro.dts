@@ -644,7 +644,6 @@
 		fcs,suspend-voltage-selector = <1>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&vsel1_gpio>;
-		regulator-name = "vdd_cpu_b";
 		regulator-always-on;
 		regulator-boot-on;
 		regulator-compatible = "fan53555-reg";
@@ -665,7 +664,6 @@
 		fcs,suspend-voltage-selector = <1>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&vsel2_gpio>;
-		regulator-name = "vdd_gpu";
 		regulator-always-on;
 		regulator-boot-on;
 		regulator-compatible = "fan53555-reg";
