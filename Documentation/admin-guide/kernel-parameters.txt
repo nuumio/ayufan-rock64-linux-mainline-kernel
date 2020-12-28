@@ -3823,6 +3823,14 @@
 		nomsi	Do not use MSI for native PCIe PME signaling (this makes
 			all PCIe root ports use INTx for all services).
 
+	pcie_rockchip_host.bus_scan_delay_ms=
+			[PCIE] delay before PCIe bus scan in milliseconds.
+			If set to greater than or equal to 0 this parameter will
+			override delay set in device tree. Values less than 0
+			are ignored. This parameter provides a workaround for
+			some devices causing a crash in bus scan.
+			Default: -1
+
 	pcmv=		[HW,PCMCIA] BadgePAD 4
 
 	pd_ignore_unused

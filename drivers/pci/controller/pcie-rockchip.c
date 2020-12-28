@@ -149,6 +149,11 @@ int rockchip_pcie_parse_dt(struct rockchip_pcie *rockchip)
 		return PTR_ERR(rockchip->clk_pcie_pm);
 	}
 
+	err = of_property_read_u32(node, "rockchip,bus-scan-delay-ms",
+				   &rockchip->bus_scan_delay_ms);
+	if (err)
+		rockchip->bus_scan_delay_ms = 0;
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(rockchip_pcie_parse_dt);

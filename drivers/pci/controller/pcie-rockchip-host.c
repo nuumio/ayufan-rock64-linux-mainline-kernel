@@ -24,6 +24,7 @@
 #include <linux/kernel.h>
 #include <linux/mfd/syscon.h>
 #include <linux/module.h>
+#include <linux/moduleparam.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/of_pci.h>
@@ -38,6 +39,9 @@
 
 #include "../pci.h"
 #include "pcie-rockchip.h"
+
+static int bus_scan_delay_ms = -1;
+module_param(bus_scan_delay_ms, int, 0444);
 
 static void rockchip_pcie_enable_bw_int(struct rockchip_pcie *rockchip)
 {
@@ -941,6 +945,7 @@ static int rockchip_pcie_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct pci_host_bridge *bridge;
 	int err;
+	u32 delay = 0;
 
 	if (!dev->of_node)
 		return -ENODEV;
@@ -991,6 +996,19 @@ static int rockchip_pcie_probe(struct platform_device *pdev)
 
 	bridge->sysdata = rockchip;
 	bridge->ops = &rockchip_pcie_ops;
+
+	/*
+	 * Work around a crash caused by some devices on bus scan by applying a
+	 * delay if one is given. Prefer command line value over device tree.
+	 */
+	if (bus_scan_delay_ms >= 0)
+		delay = bus_scan_delay_ms;
+	else
+		delay = rockchip->bus_scan_delay_ms;
+	if (delay > 0) {
+		dev_info(dev, "delay bus scan for %u ms\n", delay);
+		msleep(delay);
+	}
 
 	err = pci_host_probe(bridge);
 	if (err < 0)
