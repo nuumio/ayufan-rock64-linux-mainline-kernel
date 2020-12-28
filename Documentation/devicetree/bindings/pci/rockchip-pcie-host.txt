@@ -57,6 +57,8 @@ Optional Property:
 	using 24MHz OSC for RC's PHY.
 - ep-gpios: contain the entry for pre-reset GPIO
 - num-lanes: number of lanes to use
+- rockchip,bus-scan-delay-ms: delay before PCIe bus scan in milliseconds.
+	Provides a workaround for some devices causing a crash in bus scan.
 - vpcie12v-supply: The phandle to the 12v regulator to use for PCIe.
 - vpcie3v3-supply: The phandle to the 3.3v regulator to use for PCIe.
 - vpcie1v8-supply: The phandle to the 1.8v regulator to use for PCIe.
@@ -106,6 +108,7 @@ pcie0: pcie@f8000000 {
 		 <&cru SRST_PCIE_PM>, <&cru SRST_P_PCIE>, <&cru SRST_A_PCIE>;
 	reset-names = "core", "mgmt", "mgmt-sticky", "pipe",
 		      "pm", "pclk", "aclk";
+	rockchip,bus-scan-delay-ms = <1100>;
 	/* deprecated legacy PHY model */
 	phys = <&pcie_phy>;
 	phy-names = "pcie-phy";
